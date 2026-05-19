@@ -5,6 +5,11 @@ edition = "2024"
 license = "Apache-2.0"
 description = "Async service lifecycle orchestration with cooperative cancellation and shutdown deadlines."
 repository = "https://github.com/intentee/trzcina"
+homepage = "https://github.com/intentee/trzcina"
+readme = "../README.md"
+authors = ["Intentee"]
+keywords = ["async", "service", "lifecycle", "cancellation", "tokio"]
+categories = ["asynchronous", "concurrency"]
 
 [dependencies]
 anyhow = { workspace = true }
