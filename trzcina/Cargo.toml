@@ -1,0 +1,18 @@
+[package]
+name = "trzcina"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Async service lifecycle orchestration with cooperative cancellation and shutdown deadlines."
+repository = "https://github.com/intentee/trzcina"
+
+[dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+futures-util = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+
+[lints]
+workspace = true
