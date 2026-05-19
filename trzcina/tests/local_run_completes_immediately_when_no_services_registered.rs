@@ -2,15 +2,15 @@ use std::time::Duration;
 
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use trzcina::ServiceManager;
+use trzcina::LocalServiceManager;
 
 #[tokio::test]
-async fn completes_immediately_when_no_services_registered() {
-    let manager = ServiceManager::default();
+async fn local_completes_immediately_when_no_services_registered() {
+    let manager = LocalServiceManager::default();
     timeout(
         Duration::from_secs(5),
         manager
-            .start(CancellationToken::new())
+            .start_local(CancellationToken::new())
             .run_to_completion(Duration::from_secs(1)),
     )
     .await

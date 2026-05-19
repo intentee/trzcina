@@ -1,15 +1,26 @@
+mod local_registered_service;
+mod local_running_service_collection;
+mod local_service;
+mod local_service_bundle;
+mod local_service_manager;
 mod registered_service;
 mod running_service;
 mod running_service_collection;
 mod service;
 mod service_bundle;
 mod service_manager;
+mod service_outcome_classifier;
 mod service_shutdown_error;
 mod service_shutdown_outcome;
 mod service_shutdown_outcome_collection;
 mod service_shutdown_outcome_with_service_name;
+mod service_task_drainer;
 mod sibling_cancellation_guard;
 
+pub use crate::local_running_service_collection::LocalRunningServiceCollection;
+pub use crate::local_service::LocalService;
+pub use crate::local_service_bundle::LocalServiceBundle;
+pub use crate::local_service_manager::LocalServiceManager;
 pub use crate::running_service_collection::RunningServiceCollection;
 pub use crate::service::Service;
 pub use crate::service_bundle::ServiceBundle;

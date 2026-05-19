@@ -5,16 +5,16 @@ use async_trait::async_trait;
 use tokio::task::yield_now;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use trzcina::Service;
-use trzcina::ServiceManager;
+use trzcina::LocalService;
+use trzcina::LocalServiceManager;
 use trzcina::ServiceShutdownOutcome;
 
 struct ConfiguredService {
     hang_ignoring_cancellation: bool,
 }
 
-#[async_trait]
-impl Service for ConfiguredService {
+#[async_trait(?Send)]
+impl LocalService for ConfiguredService {
     async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
         if self.hang_ignoring_cancellation {
             loop {
@@ -26,8 +26,8 @@ impl Service for ConfiguredService {
 }
 
 #[tokio::test]
-async fn aborts_hung_service_after_shutdown_deadline() {
-    let mut manager = ServiceManager::default();
+async fn local_aborts_hung_service_after_shutdown_deadline() {
+    let mut manager = LocalServiceManager::default();
     manager.register_service(ConfiguredService {
         hang_ignoring_cancellation: false,
     });
@@ -38,7 +38,7 @@ async fn aborts_hung_service_after_shutdown_deadline() {
     let report = timeout(
         Duration::from_secs(5),
         manager
-            .start(CancellationToken::new())
+            .start_local(CancellationToken::new())
             .run_to_completion(Duration::from_millis(50)),
     )
     .await

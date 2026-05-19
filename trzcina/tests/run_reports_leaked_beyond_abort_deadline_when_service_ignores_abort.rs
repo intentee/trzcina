@@ -2,11 +2,11 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use tokio::time::timeout;
+use tokio_util::sync::CancellationToken;
 use trzcina::Service;
 use trzcina::ServiceManager;
 use trzcina::ServiceShutdownOutcome;
-use tokio::time::timeout;
-use tokio_util::sync::CancellationToken;
 
 struct ThreadBlockingService {
     block_duration: Duration,

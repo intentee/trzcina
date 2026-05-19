@@ -5,17 +5,17 @@ use async_trait::async_trait;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use trzcina::Service;
-use trzcina::ServiceBundle;
-use trzcina::ServiceManager;
+use trzcina::LocalService;
+use trzcina::LocalServiceBundle;
+use trzcina::LocalServiceManager;
 
 struct BundleAndService {
     observation_tx: Option<oneshot::Sender<()>>,
     sibling_senders: Vec<oneshot::Sender<()>>,
 }
 
-#[async_trait]
-impl Service for BundleAndService {
+#[async_trait(?Send)]
+impl LocalService for BundleAndService {
     async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
         if let Some(observation_tx) = self.observation_tx.take() {
             observation_tx.send(()).unwrap();
@@ -24,17 +24,17 @@ impl Service for BundleAndService {
     }
 }
 
-#[async_trait]
-impl ServiceBundle for BundleAndService {
-    async fn services(self) -> Result<Vec<Box<dyn Service>>> {
-        let services: Vec<Box<dyn Service>> = self
+#[async_trait(?Send)]
+impl LocalServiceBundle for BundleAndService {
+    async fn services(self) -> Result<Vec<Box<dyn LocalService>>> {
+        let services: Vec<Box<dyn LocalService>> = self
             .sibling_senders
             .into_iter()
             .map(|observation_tx| {
                 Box::new(BundleAndService {
                     observation_tx: Some(observation_tx),
                     sibling_senders: Vec::new(),
-                }) as Box<dyn Service>
+                }) as Box<dyn LocalService>
             })
             .collect();
         Ok(services)
@@ -42,7 +42,7 @@ impl ServiceBundle for BundleAndService {
 }
 
 #[tokio::test]
-async fn runs_all_services_returned_by_bundle() {
+async fn local_runs_all_services_returned_by_bundle() {
     let (first_tx, mut first_rx) = oneshot::channel::<()>();
     let (second_tx, mut second_rx) = oneshot::channel::<()>();
 
@@ -51,13 +51,13 @@ async fn runs_all_services_returned_by_bundle() {
         sibling_senders: vec![first_tx, second_tx],
     };
 
-    let mut manager = ServiceManager::default();
+    let mut manager = LocalServiceManager::default();
     manager.register_bundle(bundle).await.unwrap();
 
     timeout(
         Duration::from_secs(5),
         manager
-            .start(CancellationToken::new())
+            .start_local(CancellationToken::new())
             .run_to_completion(Duration::from_secs(1)),
     )
     .await

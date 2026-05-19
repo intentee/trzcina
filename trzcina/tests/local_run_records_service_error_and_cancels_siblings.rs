@@ -6,8 +6,8 @@ use async_trait::async_trait;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use trzcina::Service;
-use trzcina::ServiceManager;
+use trzcina::LocalService;
+use trzcina::LocalServiceManager;
 use trzcina::ServiceShutdownOutcome;
 
 struct ConfiguredService {
@@ -15,8 +15,8 @@ struct ConfiguredService {
     observation_tx: Option<oneshot::Sender<()>>,
 }
 
-#[async_trait]
-impl Service for ConfiguredService {
+#[async_trait(?Send)]
+impl LocalService for ConfiguredService {
     async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
         if self.return_err {
             return Err(anyhow!("erroring service deliberately failed"));
@@ -30,8 +30,8 @@ impl Service for ConfiguredService {
 }
 
 #[tokio::test]
-async fn records_service_error_and_cancels_siblings() {
-    let mut manager = ServiceManager::default();
+async fn local_records_service_error_and_cancels_siblings() {
+    let mut manager = LocalServiceManager::default();
     manager.register_service(ConfiguredService {
         return_err: true,
         observation_tx: None,
@@ -50,7 +50,7 @@ async fn records_service_error_and_cancels_siblings() {
     let report = timeout(
         Duration::from_secs(5),
         manager
-            .start(CancellationToken::new())
+            .start_local(CancellationToken::new())
             .run_to_completion(Duration::from_secs(1)),
     )
     .await

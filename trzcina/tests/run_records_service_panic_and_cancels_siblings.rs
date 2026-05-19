@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOutcome;
 
 const PANIC_MARKER: &str = "deliberately panicking for cascade test";
 

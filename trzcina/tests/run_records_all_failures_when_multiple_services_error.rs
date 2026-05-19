@@ -3,12 +3,12 @@ use std::time::Duration;
 use anyhow::Result;
 use anyhow::anyhow;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOutcome;
 
 struct ConfiguredService {
     return_err: bool,

@@ -1,6 +1,5 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::cell::Cell;
+use std::rc::Rc;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -9,24 +8,25 @@ use tokio::sync::oneshot;
 use tokio::time::interval;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use trzcina::Service;
-use trzcina::ServiceManager;
+use trzcina::LocalService;
+use trzcina::LocalServiceManager;
 use trzcina::ServiceShutdownOutcome;
 
 struct ReconciliationService {
     first_tick_tx: Option<oneshot::Sender<()>>,
-    tick_counter: Arc<AtomicUsize>,
+    tick_counter: Rc<Cell<usize>>,
 }
 
-#[async_trait]
-impl Service for ReconciliationService {
+#[async_trait(?Send)]
+impl LocalService for ReconciliationService {
     async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
         let mut ticker = interval(Duration::from_millis(10));
         loop {
             tokio::select! {
                 () = cancellation_token.cancelled() => return Ok(()),
                 _ = ticker.tick() => {
-                    let previous = self.tick_counter.fetch_add(1, Ordering::SeqCst);
+                    let previous = self.tick_counter.get();
+                    self.tick_counter.set(previous + 1);
                     if previous == 0
                         && let Some(first_tick_tx) = self.first_tick_tx.take()
                     {
@@ -39,35 +39,34 @@ impl Service for ReconciliationService {
 }
 
 #[tokio::test]
-async fn supports_interval_ticker_reconciliation_pattern() {
-    let tick_counter = Arc::new(AtomicUsize::new(0));
+async fn local_supports_interval_ticker_reconciliation_pattern() {
+    let tick_counter: Rc<Cell<usize>> = Rc::new(Cell::new(0));
     let cancellation_token = CancellationToken::new();
     let cancellation_token_for_run = cancellation_token.clone();
     let (first_tick_tx, first_tick_rx) = oneshot::channel::<()>();
 
-    let mut manager = ServiceManager::default();
+    let mut manager = LocalServiceManager::default();
     manager.register_service(ReconciliationService {
         first_tick_tx: Some(first_tick_tx),
         tick_counter: tick_counter.clone(),
     });
 
-    let run_task = tokio::spawn(async move {
-        manager
-            .start(cancellation_token_for_run)
-            .run_to_completion(Duration::from_secs(1))
-            .await
-    });
+    let run_future = manager
+        .start_local(cancellation_token_for_run)
+        .run_to_completion(Duration::from_secs(1));
+    let trigger_future = async move {
+        first_tick_rx.await.unwrap();
+        cancellation_token.cancel();
+    };
 
-    first_tick_rx.await.unwrap();
-    cancellation_token.cancel();
-
-    let report = timeout(Duration::from_secs(5), run_task)
-        .await
-        .unwrap()
-        .unwrap();
+    let (report, ()) = timeout(Duration::from_secs(5), async {
+        tokio::join!(run_future, trigger_future)
+    })
+    .await
+    .unwrap();
 
     assert!(
-        tick_counter.load(Ordering::SeqCst) > 0,
+        tick_counter.get() > 0,
         "ticker must have fired at least once"
     );
     assert_eq!(report.outcomes().len(), 1);

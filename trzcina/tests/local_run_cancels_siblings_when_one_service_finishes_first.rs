@@ -1,25 +1,24 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use anyhow::anyhow;
 use async_trait::async_trait;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use trzcina::Service;
-use trzcina::ServiceManager;
+use trzcina::LocalService;
+use trzcina::LocalServiceManager;
 use trzcina::ServiceShutdownOutcome;
 
 struct ConfiguredService {
-    return_err: bool,
+    finish_immediately: bool,
     observation_tx: Option<oneshot::Sender<()>>,
 }
 
-#[async_trait]
-impl Service for ConfiguredService {
+#[async_trait(?Send)]
+impl LocalService for ConfiguredService {
     async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
-        if self.return_err {
-            return Err(anyhow!("erroring service deliberately failed"));
+        if self.finish_immediately {
+            return Ok(());
         }
         cancellation_token.cancelled().await;
         if let Some(observation_tx) = self.observation_tx.take() {
@@ -30,10 +29,10 @@ impl Service for ConfiguredService {
 }
 
 #[tokio::test]
-async fn records_service_error_and_cancels_siblings() {
-    let mut manager = ServiceManager::default();
+async fn local_cancels_siblings_when_one_service_finishes_first() {
+    let mut manager = LocalServiceManager::default();
     manager.register_service(ConfiguredService {
-        return_err: true,
+        finish_immediately: true,
         observation_tx: None,
     });
 
@@ -41,7 +40,7 @@ async fn records_service_error_and_cancels_siblings() {
     for _ in 0..4 {
         let (observation_tx, observation_rx) = oneshot::channel::<()>();
         manager.register_service(ConfiguredService {
-            return_err: false,
+            finish_immediately: false,
             observation_tx: Some(observation_tx),
         });
         sibling_observation_receivers.push(observation_rx);
@@ -50,25 +49,20 @@ async fn records_service_error_and_cancels_siblings() {
     let report = timeout(
         Duration::from_secs(5),
         manager
-            .start(CancellationToken::new())
+            .start_local(CancellationToken::new())
             .run_to_completion(Duration::from_secs(1)),
     )
     .await
     .unwrap();
 
     assert_eq!(report.outcomes().len(), 5);
-    assert!(matches!(
-        report.outcomes()[0].outcome,
-        ServiceShutdownOutcome::Errored(_)
-    ));
-    for sibling_outcome in &report.outcomes()[1..] {
+    for named_outcome in report.outcomes() {
         assert!(matches!(
-            sibling_outcome.outcome,
+            named_outcome.outcome,
             ServiceShutdownOutcome::Completed
         ));
     }
     for mut observation_rx in sibling_observation_receivers {
         observation_rx.try_recv().unwrap();
     }
-    assert!(report.into_result().is_err());
 }
