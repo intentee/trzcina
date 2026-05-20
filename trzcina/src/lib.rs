@@ -17,10 +17,12 @@ mod service_shutdown_outcome_with_service_name;
 mod service_task_drainer;
 mod sibling_cancellation_guard;
 
+pub use crate::local_registered_service::LocalRegisteredService;
 pub use crate::local_running_service_collection::LocalRunningServiceCollection;
 pub use crate::local_service::LocalService;
 pub use crate::local_service_bundle::LocalServiceBundle;
 pub use crate::local_service_manager::LocalServiceManager;
+pub use crate::registered_service::RegisteredService;
 pub use crate::running_service_collection::RunningServiceCollection;
 pub use crate::service::Service;
 pub use crate::service_bundle::ServiceBundle;
