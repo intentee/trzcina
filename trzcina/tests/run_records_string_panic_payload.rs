@@ -1,4 +1,3 @@
-use std::panic::panic_any;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -10,19 +9,23 @@ use trzcina::ServiceManager;
 use trzcina::ServiceShutdownOptions;
 use trzcina::ServiceShutdownOutcome;
 
-struct NonStringPanickingService;
+struct StringPanickingService {
+    panic_payload: String,
+}
 
 #[async_trait]
-impl Service for NonStringPanickingService {
+impl Service for StringPanickingService {
     async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
-        panic_any(42_u32);
+        panic!("dynamic message: {}", self.panic_payload);
     }
 }
 
 #[tokio::test]
-async fn records_non_string_panic_payload_as_generic_message() {
+async fn records_string_panic_payload() {
     let mut manager = ServiceManager::default();
-    manager.register_service(NonStringPanickingService);
+    manager.register_service(StringPanickingService {
+        panic_payload: "owned-string-panic-payload".to_owned(),
+    });
 
     let report = timeout(
         Duration::from_secs(5),
@@ -34,8 +37,10 @@ async fn records_non_string_panic_payload_as_generic_message() {
     .unwrap();
 
     assert_eq!(report.outcomes().len(), 1);
-    assert!(matches!(
-        report.outcomes()[0].outcome,
-        ServiceShutdownOutcome::Panicked(_)
-    ));
+    match &report.outcomes()[0].outcome {
+        ServiceShutdownOutcome::Panicked(panic_message) => {
+            assert!(panic_message.contains("owned-string-panic-payload"));
+        }
+        other_outcome => panic!("expected ServiceShutdownOutcome::Panicked, got {other_outcome:?}"),
+    }
 }

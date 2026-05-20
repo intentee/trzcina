@@ -2,11 +2,12 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOptions;
+use trzcina::ServiceShutdownOutcome;
 
 struct ThreadBlockingService {
     block_duration: Duration,
@@ -33,7 +34,10 @@ async fn reports_leaked_beyond_abort_deadline_when_service_ignores_abort() {
     let run_task = tokio::spawn(async move {
         manager
             .start(cancellation_token_for_run)
-            .run_to_completion(Duration::from_millis(50))
+            .run_to_completion(ServiceShutdownOptions {
+                cooperative_deadline: Duration::from_millis(50),
+                abort_deadline: Duration::from_millis(50),
+            })
             .await
     });
 
