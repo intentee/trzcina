@@ -1,4 +1,4 @@
-COVERAGE_PACKAGES := -p trzcina
+COVERAGE_PACKAGES := --workspace
 RUST_LOG ?= debug
 
 # -----------------------------------------------------------------------------
@@ -34,7 +34,9 @@ coverage: node_modules
 	cargo llvm-cov report
 	npx @intentee/rust-coverage-check target/llvm-cov.json \
 		--workspace-root $(CURDIR) \
-		--gated trzcina=97
+		--gated trzcina-local-service=100 \
+		--gated trzcina-sendable-service=100 \
+		--gated trzcina-service=100
 
 .PHONY: coverage-clean
 coverage-clean:
