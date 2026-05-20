@@ -1,0 +1,23 @@
+mod manager;
+mod run_to_completion_options;
+mod running_collection;
+mod running_service;
+mod service_outcome_classifier;
+mod service_shutdown_error;
+mod service_shutdown_outcome;
+mod service_shutdown_outcome_collection;
+mod service_shutdown_outcome_with_service_name;
+mod service_task_drainer;
+mod sibling_cancellation_guard;
+
+pub use crate::manager::Manager;
+pub use crate::run_to_completion_options::RunToCompletionOptions;
+pub use crate::running_collection::RunningCollection;
+pub use crate::running_service::RunningService;
+pub use crate::service_outcome_classifier::classify_future_outcome;
+pub use crate::service_shutdown_error::ServiceShutdownError;
+pub use crate::service_shutdown_outcome::ServiceShutdownOutcome;
+pub use crate::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
+pub use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
+pub use crate::service_task_drainer::drain_to_completion;
+pub use crate::sibling_cancellation_guard::SiblingCancellationGuard;

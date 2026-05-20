@@ -1,9 +1,9 @@
 [package]
-name = "trzcina"
+name = "trzcina-sendable-service"
 version = "0.2.0"
 edition = "2024"
 license = "Apache-2.0"
-description = "Async service lifecycle orchestration with cooperative cancellation and shutdown deadlines."
+description = "Sendable (Send + 'static) services for trzcina: cooperative async lifecycle on a multi-thread runtime."
 repository = "https://github.com/intentee/trzcina"
 homepage = "https://github.com/intentee/trzcina"
 readme = "../README.md"
@@ -12,15 +12,13 @@ keywords = ["async", "service", "lifecycle", "cancellation", "tokio"]
 categories = ["asynchronous", "concurrency"]
 
 [dependencies]
-trzcina-local-service = { version = "0.2.0", path = "../trzcina-local-service" }
-trzcina-sendable-service = { version = "0.2.0", path = "../trzcina-sendable-service" }
-trzcina-service = { version = "0.2.0", path = "../trzcina-service" }
-
-[dev-dependencies]
 anyhow = { workspace = true }
 async-trait = { workspace = true }
+futures-util = { workspace = true }
+log = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+trzcina-service = { version = "0.2.0", path = "../trzcina-service" }
 
 [lints]
 workspace = true

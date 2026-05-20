@@ -1,6 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["trzcina"]
+members = [
+    "trzcina",
+    "trzcina-local-service",
+    "trzcina-sendable-service",
+    "trzcina-service",
+]
 
 [workspace.dependencies]
 anyhow = "1.0"

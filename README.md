@@ -11,12 +11,10 @@ If your service spawns child tasks via `tokio::spawn`, clone the cancellation to
 A service that simply waits for shutdown:
 
 ```rust
-use std::time::Duration;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use tokio_util::sync::CancellationToken;
-use trzcina::{Service, ServiceManager};
+use trzcina::{Manager, RunToCompletionOptions, RunningCollection, Service, ServiceManager};
 
 struct EchoService;
 
@@ -33,13 +31,12 @@ async fn main() -> Result<()> {
     let mut service_manager = ServiceManager::default();
     service_manager.register_service(EchoService);
 
-    let running = service_manager.start(CancellationToken::new());
-    running
-        .run_to_completion(Duration::from_secs(10))
+    service_manager
+        .start(CancellationToken::new())
+        .run_to_completion(RunToCompletionOptions::default())
         .await
-        .into_result()?;
-
-    Ok(())
+        .into_result()
+        .map_err(Into::into)
 }
 ```
 

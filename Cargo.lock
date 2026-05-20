@@ -269,10 +269,48 @@ dependencies = [
 
 [[package]]
 name = "trzcina"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "tokio",
+ "tokio-util",
+ "trzcina-local-service",
+ "trzcina-sendable-service",
+ "trzcina-service",
+]
+
+[[package]]
+name = "trzcina-local-service"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "futures-util",
+ "log",
+ "tokio",
+ "tokio-util",
+ "trzcina-service",
+]
+
+[[package]]
+name = "trzcina-sendable-service"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "futures-util",
+ "log",
+ "tokio",
+ "tokio-util",
+ "trzcina-service",
+]
+
+[[package]]
+name = "trzcina-service"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
  "futures-util",
  "log",
  "tokio",
