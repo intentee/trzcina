@@ -51,7 +51,7 @@ async fn reports_leaked_beyond_abort_deadline_when_service_ignores_abort() {
     assert_eq!(report.outcomes().len(), 1);
     assert!(matches!(
         report.outcomes()[0].outcome,
-        ServiceShutdownOutcome::LeakedBeyondAbortDeadline,
+        ServiceShutdownOutcome::LeakedBeyondShutdownDeadline,
     ));
     assert!(report.into_result().is_err());
 }

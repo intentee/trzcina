@@ -37,7 +37,7 @@ impl fmt::Display for ServiceShutdownError {
                 ServiceShutdownOutcome::AbortedByShutdownDeadline => {
                     writeln!(f, "  service {name:?} aborted after shutdown deadline")
                 }
-                ServiceShutdownOutcome::LeakedBeyondAbortDeadline => {
+                ServiceShutdownOutcome::LeakedBeyondShutdownDeadline => {
                     writeln!(f, "  service {name:?} leaked beyond shutdown deadline")
                 }
             }?;

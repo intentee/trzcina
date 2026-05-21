@@ -6,5 +6,5 @@ pub enum ServiceShutdownOutcome {
     Errored(Error),
     Panicked(String),
     AbortedByShutdownDeadline,
-    LeakedBeyondAbortDeadline,
+    LeakedBeyondShutdownDeadline,
 }

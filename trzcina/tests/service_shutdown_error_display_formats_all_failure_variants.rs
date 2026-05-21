@@ -24,7 +24,7 @@ fn display_formats_all_failure_variants() {
         },
         ServiceShutdownOutcomeWithServiceName {
             name: "leaked_service",
-            outcome: ServiceShutdownOutcome::LeakedBeyondAbortDeadline,
+            outcome: ServiceShutdownOutcome::LeakedBeyondShutdownDeadline,
         },
     ];
 

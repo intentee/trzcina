@@ -14,7 +14,7 @@ impl From<RunningService> for ServiceShutdownOutcomeWithServiceName {
         let outcome = match running_service.outcome_receiver.try_recv() {
             Ok(outcome) => outcome,
             Err(TryRecvError::Closed) => ServiceShutdownOutcome::AbortedByShutdownDeadline,
-            Err(TryRecvError::Empty) => ServiceShutdownOutcome::LeakedBeyondAbortDeadline,
+            Err(TryRecvError::Empty) => ServiceShutdownOutcome::LeakedBeyondShutdownDeadline,
         };
 
         Self {
