@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+#[derive(Clone)]
 pub struct ServiceShutdownOptions {
     pub cooperative_deadline: Duration,
     pub abort_deadline: Duration,
