@@ -2,11 +2,12 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOptions;
 
 struct ObservableService {
     observation_tx: Option<oneshot::Sender<()>>,
@@ -35,7 +36,7 @@ async fn runs_registered_service() {
         Duration::from_secs(5),
         manager
             .start(CancellationToken::new())
-            .run_to_completion(Duration::from_secs(1)),
+            .run_to_completion(ServiceShutdownOptions::default()),
     )
     .await
     .unwrap()

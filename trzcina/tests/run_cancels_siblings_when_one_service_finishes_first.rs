@@ -2,12 +2,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOptions;
+use trzcina::ServiceShutdownOutcome;
 
 struct ConfiguredService {
     finish_immediately: bool,
@@ -50,7 +51,7 @@ async fn cancels_siblings_when_one_service_finishes_first() {
         Duration::from_secs(5),
         manager
             .start(CancellationToken::new())
-            .run_to_completion(Duration::from_secs(1)),
+            .run_to_completion(ServiceShutdownOptions::default()),
     )
     .await
     .unwrap();

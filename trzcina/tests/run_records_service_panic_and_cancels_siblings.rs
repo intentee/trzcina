@@ -2,12 +2,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOptions;
+use trzcina::ServiceShutdownOutcome;
 
 const PANIC_MARKER: &str = "deliberately panicking for cascade test";
 
@@ -52,7 +53,7 @@ async fn records_service_panic_and_cancels_siblings() {
         Duration::from_secs(5),
         manager
             .start(CancellationToken::new())
-            .run_to_completion(Duration::from_secs(1)),
+            .run_to_completion(ServiceShutdownOptions::default()),
     )
     .await
     .unwrap();

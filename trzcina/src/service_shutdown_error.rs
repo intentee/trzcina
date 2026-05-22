@@ -27,20 +27,20 @@ impl fmt::Display for ServiceShutdownError {
 
         for ServiceShutdownOutcomeWithServiceName { name, outcome } in &self.failed_outcomes {
             match outcome {
-                ServiceShutdownOutcome::Completed => {}
+                ServiceShutdownOutcome::Completed => Ok(()),
                 ServiceShutdownOutcome::Errored(service_error) => {
-                    writeln!(f, "  service {name:?} errored: {service_error:#}")?;
+                    writeln!(f, "  service {name:?} errored: {service_error:#}")
                 }
                 ServiceShutdownOutcome::Panicked(panic_message) => {
-                    writeln!(f, "  service {name:?} panicked: {panic_message}")?;
+                    writeln!(f, "  service {name:?} panicked: {panic_message}")
                 }
                 ServiceShutdownOutcome::AbortedByShutdownDeadline => {
-                    writeln!(f, "  service {name:?} aborted after shutdown deadline")?;
+                    writeln!(f, "  service {name:?} aborted after shutdown deadline")
                 }
-                ServiceShutdownOutcome::LeakedBeyondAbortDeadline => {
-                    writeln!(f, "  service {name:?} leaked beyond shutdown deadline")?;
+                ServiceShutdownOutcome::LeakedBeyondShutdownDeadline => {
+                    writeln!(f, "  service {name:?} leaked beyond shutdown deadline")
                 }
-            }
+            }?;
         }
 
         Ok(())

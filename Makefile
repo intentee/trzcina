@@ -34,7 +34,7 @@ coverage: node_modules
 	cargo llvm-cov report
 	npx @intentee/rust-coverage-check target/llvm-cov.json \
 		--workspace-root $(CURDIR) \
-		--gated trzcina=97
+		--gated trzcina=100
 
 .PHONY: coverage-clean
 coverage-clean:

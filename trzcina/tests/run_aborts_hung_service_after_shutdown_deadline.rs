@@ -2,12 +2,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::task::yield_now;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOptions;
+use trzcina::ServiceShutdownOutcome;
 
 struct ConfiguredService {
     hang_ignoring_cancellation: bool,
@@ -39,7 +40,10 @@ async fn aborts_hung_service_after_shutdown_deadline() {
         Duration::from_secs(5),
         manager
             .start(CancellationToken::new())
-            .run_to_completion(Duration::from_millis(50)),
+            .run_to_completion(ServiceShutdownOptions {
+                cooperative_deadline: Duration::from_millis(50),
+                abort_deadline: Duration::from_millis(50),
+            }),
     )
     .await
     .unwrap();

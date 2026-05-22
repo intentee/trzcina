@@ -2,12 +2,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOptions;
+use trzcina::ServiceShutdownOutcome;
 
 struct ActixStyleService {
     started_tx: Option<oneshot::Sender<()>>,
@@ -43,7 +44,7 @@ async fn supports_actix_style_shutdown_signal_pattern() {
     let run_task = tokio::spawn(async move {
         manager
             .start(cancellation_token_for_run)
-            .run_to_completion(Duration::from_secs(1))
+            .run_to_completion(ServiceShutdownOptions::default())
             .await
     });
 

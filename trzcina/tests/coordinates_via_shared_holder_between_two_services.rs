@@ -4,13 +4,14 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use trzcina::Service;
-use trzcina::ServiceManager;
-use trzcina::ServiceShutdownOutcome;
 use tokio::sync::Notify;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use trzcina::Service;
+use trzcina::ServiceManager;
+use trzcina::ServiceShutdownOptions;
+use trzcina::ServiceShutdownOutcome;
 
 const PRODUCED_VALUE: u32 = 42;
 
@@ -74,7 +75,7 @@ async fn coordinates_via_shared_holder_between_two_services() {
     let run_task = tokio::spawn(async move {
         manager
             .start(cancellation_token_for_run)
-            .run_to_completion(Duration::from_secs(1))
+            .run_to_completion(ServiceShutdownOptions::default())
             .await
     });
 

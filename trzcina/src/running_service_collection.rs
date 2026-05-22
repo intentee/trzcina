@@ -13,6 +13,7 @@ use tokio_util::sync::CancellationToken;
 use crate::registered_service::RegisteredService;
 use crate::running_service::RunningService;
 use crate::service::Service;
+use crate::service_shutdown_options::ServiceShutdownOptions;
 use crate::service_shutdown_outcome::ServiceShutdownOutcome;
 use crate::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
@@ -104,12 +105,15 @@ impl RunningServiceCollection {
 
     pub async fn run_to_completion(
         mut self,
-        shutdown_deadline: Duration,
+        ServiceShutdownOptions {
+            cooperative_deadline,
+            abort_deadline,
+        }: ServiceShutdownOptions,
     ) -> ServiceShutdownOutcomeCollection {
         self.wait_for_shutdown_signal().await;
 
-        if !self.drain_within_deadline(shutdown_deadline).await {
-            self.abort_and_drain(shutdown_deadline).await;
+        if !self.drain_within_deadline(cooperative_deadline).await {
+            self.abort_and_drain(abort_deadline).await;
         }
 
         let outcomes: Vec<ServiceShutdownOutcomeWithServiceName> =
