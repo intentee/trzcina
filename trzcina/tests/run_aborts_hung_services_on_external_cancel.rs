@@ -14,7 +14,7 @@ struct CancellationIgnoringService;
 
 #[async_trait]
 impl Service for CancellationIgnoringService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
         loop {
             yield_now().await;
         }

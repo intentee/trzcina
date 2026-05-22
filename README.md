@@ -14,7 +14,7 @@ struct EchoService;
 
 #[async_trait]
 impl Service for EchoService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         cancellation_token.cancelled().await;
         Ok(())
     }

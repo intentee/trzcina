@@ -10,15 +10,13 @@ use trzcina::ServiceManager;
 use trzcina::ServiceShutdownOptions;
 
 struct ObservableService {
-    observation_tx: Option<oneshot::Sender<()>>,
+    observation_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
 impl Service for ObservableService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
-        if let Some(observation_tx) = self.observation_tx.take() {
-            observation_tx.send(()).unwrap();
-        }
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
+        self.observation_tx.send(()).unwrap();
         Ok(())
     }
 }
@@ -28,9 +26,7 @@ async fn runs_registered_service() {
     let (observation_tx, mut observation_rx) = oneshot::channel::<()>();
 
     let mut manager = ServiceManager::default();
-    manager.register_service(ObservableService {
-        observation_tx: Some(observation_tx),
-    });
+    manager.register_service(ObservableService { observation_tx });
 
     timeout(
         Duration::from_secs(5),

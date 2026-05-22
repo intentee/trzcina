@@ -31,16 +31,16 @@ fn panic_payload_to_string(panic_payload: Box<dyn Any + Send>) -> String {
 
 async fn run_service_with_sibling_cancellation_on_return(
     service_name: &'static str,
-    mut service: Box<dyn Service>,
+    service: Box<dyn Service>,
     cancellation_token: CancellationToken,
 ) -> ServiceShutdownOutcome {
     let _sibling_cancellation_guard = SiblingCancellationGuard::new(cancellation_token.clone());
-    classify_service_outcome(service_name, &mut service, cancellation_token).await
+    classify_service_outcome(service_name, service, cancellation_token).await
 }
 
 async fn classify_service_outcome(
     service_name: &'static str,
-    service: &mut Box<dyn Service>,
+    service: Box<dyn Service>,
     cancellation_token: CancellationToken,
 ) -> ServiceShutdownOutcome {
     info!("Service {service_name:?} starting");

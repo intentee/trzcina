@@ -11,16 +11,14 @@ use trzcina::ServiceShutdownOptions;
 use trzcina::ServiceShutdownOutcome;
 
 struct AwaitingService {
-    observation_tx: Option<oneshot::Sender<()>>,
+    observation_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
 impl Service for AwaitingService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         cancellation_token.cancelled().await;
-        if let Some(observation_tx) = self.observation_tx.take() {
-            observation_tx.send(()).unwrap();
-        }
+        self.observation_tx.send(()).unwrap();
         Ok(())
     }
 }
@@ -34,9 +32,7 @@ async fn cancels_all_services_when_external_token_cancelled() {
 
     for _ in 0..5 {
         let (observation_tx, observation_rx) = oneshot::channel::<()>();
-        manager.register_service(AwaitingService {
-            observation_tx: Some(observation_tx),
-        });
+        manager.register_service(AwaitingService { observation_tx });
         observation_receivers.push(observation_rx);
     }
 

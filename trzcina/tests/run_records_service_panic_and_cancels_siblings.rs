@@ -12,21 +12,24 @@ use trzcina::ServiceShutdownOutcome;
 
 const PANIC_MARKER: &str = "deliberately panicking for cascade test";
 
-struct ConfiguredService {
-    should_panic: bool,
-    observation_tx: Option<oneshot::Sender<()>>,
+struct PanickingService;
+
+#[async_trait]
+impl Service for PanickingService {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
+        panic!("{}", PANIC_MARKER);
+    }
+}
+
+struct WaitingObserverService {
+    observation_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
-impl Service for ConfiguredService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
-        if self.should_panic {
-            panic!("{}", PANIC_MARKER);
-        }
+impl Service for WaitingObserverService {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         cancellation_token.cancelled().await;
-        if let Some(observation_tx) = self.observation_tx.take() {
-            observation_tx.send(()).unwrap();
-        }
+        self.observation_tx.send(()).unwrap();
         Ok(())
     }
 }
@@ -34,18 +37,12 @@ impl Service for ConfiguredService {
 #[tokio::test]
 async fn records_service_panic_and_cancels_siblings() {
     let mut manager = ServiceManager::default();
-    manager.register_service(ConfiguredService {
-        should_panic: true,
-        observation_tx: None,
-    });
+    manager.register_service(PanickingService);
 
     let mut sibling_observation_receivers = Vec::new();
     for _ in 0..4 {
         let (observation_tx, observation_rx) = oneshot::channel::<()>();
-        manager.register_service(ConfiguredService {
-            should_panic: false,
-            observation_tx: Some(observation_tx),
-        });
+        manager.register_service(WaitingObserverService { observation_tx });
         sibling_observation_receivers.push(observation_rx);
     }
 

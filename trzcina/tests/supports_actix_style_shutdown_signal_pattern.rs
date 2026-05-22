@@ -11,15 +11,13 @@ use trzcina::ServiceShutdownOptions;
 use trzcina::ServiceShutdownOutcome;
 
 struct ActixStyleService {
-    started_tx: Option<oneshot::Sender<()>>,
+    started_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
 impl Service for ActixStyleService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
-        if let Some(started_tx) = self.started_tx.take() {
-            started_tx.send(()).unwrap();
-        }
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
+        self.started_tx.send(()).unwrap();
         loop {
             if cancellation_token.is_cancelled() {
                 break;
@@ -37,9 +35,7 @@ async fn supports_actix_style_shutdown_signal_pattern() {
     let (started_tx, started_rx) = oneshot::channel::<()>();
 
     let mut manager = ServiceManager::default();
-    manager.register_service(ActixStyleService {
-        started_tx: Some(started_tx),
-    });
+    manager.register_service(ActixStyleService { started_tx });
 
     let run_task = tokio::spawn(async move {
         manager

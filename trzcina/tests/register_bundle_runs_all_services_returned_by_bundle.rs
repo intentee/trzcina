@@ -10,32 +10,30 @@ use trzcina::ServiceBundle;
 use trzcina::ServiceManager;
 use trzcina::ServiceShutdownOptions;
 
-struct BundleAndService {
-    observation_tx: Option<oneshot::Sender<()>>,
-    sibling_senders: Vec<oneshot::Sender<()>>,
+struct ObservableService {
+    observation_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
-impl Service for BundleAndService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
-        if let Some(observation_tx) = self.observation_tx.take() {
-            observation_tx.send(()).unwrap();
-        }
+impl Service for ObservableService {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
+        self.observation_tx.send(()).unwrap();
         Ok(())
     }
 }
 
+struct SiblingsBundle {
+    sibling_senders: Vec<oneshot::Sender<()>>,
+}
+
 #[async_trait]
-impl ServiceBundle for BundleAndService {
+impl ServiceBundle for SiblingsBundle {
     async fn services(self) -> Result<Vec<Box<dyn Service>>> {
         let services: Vec<Box<dyn Service>> = self
             .sibling_senders
             .into_iter()
             .map(|observation_tx| {
-                Box::new(BundleAndService {
-                    observation_tx: Some(observation_tx),
-                    sibling_senders: Vec::new(),
-                }) as Box<dyn Service>
+                Box::new(ObservableService { observation_tx }) as Box<dyn Service>
             })
             .collect();
         Ok(services)
@@ -47,8 +45,7 @@ async fn runs_all_services_returned_by_bundle() {
     let (first_tx, mut first_rx) = oneshot::channel::<()>();
     let (second_tx, mut second_rx) = oneshot::channel::<()>();
 
-    let bundle = BundleAndService {
-        observation_tx: None,
+    let bundle = SiblingsBundle {
         sibling_senders: vec![first_tx, second_tx],
     };
 
