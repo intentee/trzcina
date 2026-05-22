@@ -14,7 +14,7 @@ struct NonStringPanickingService;
 
 #[async_trait]
 impl Service for NonStringPanickingService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
         panic_any(42_u32);
     }
 }

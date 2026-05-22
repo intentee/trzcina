@@ -21,7 +21,7 @@ struct StatefulService {
 
 #[async_trait]
 impl Service for StatefulService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(mut self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         loop {
             self.iteration_count += 1;
             if let Some(work_observer) = self.work_observers.pop_front() {

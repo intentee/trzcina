@@ -13,7 +13,7 @@ struct InstantOkService;
 
 #[async_trait]
 impl Service for InstantOkService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
         Ok(())
     }
 }

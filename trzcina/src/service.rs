@@ -7,5 +7,5 @@ pub trait Service: Send + 'static {
     fn name(&self) -> &'static str {
         std::any::type_name::<Self>()
     }
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()>;
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()>;
 }

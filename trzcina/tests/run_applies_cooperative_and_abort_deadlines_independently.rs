@@ -15,7 +15,7 @@ struct ThreadBlockingService {
 
 #[async_trait]
 impl Service for ThreadBlockingService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
         std::thread::sleep(self.block_duration);
         Ok(())
     }

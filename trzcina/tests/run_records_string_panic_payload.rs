@@ -15,7 +15,7 @@ struct StringPanickingService {
 
 #[async_trait]
 impl Service for StringPanickingService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
         panic!("dynamic message: {}", self.panic_payload);
     }
 }

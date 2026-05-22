@@ -20,7 +20,7 @@ struct MultiChannelPumpService {
 
 #[async_trait]
 impl Service for MultiChannelPumpService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(mut self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         loop {
             tokio::select! {
                 () = cancellation_token.cancelled() => return Ok(()),

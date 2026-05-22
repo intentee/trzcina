@@ -16,7 +16,7 @@ struct ConfiguredService {
 
 #[async_trait]
 impl Service for ConfiguredService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
         if self.hang_ignoring_cancellation {
             loop {
                 yield_now().await;

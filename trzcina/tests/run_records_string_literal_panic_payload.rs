@@ -15,7 +15,7 @@ struct LiteralPanickingService;
 
 #[async_trait]
 impl Service for LiteralPanickingService {
-    async fn run(&mut self, _cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
         panic!("deliberately panicking with a string literal");
     }
 }

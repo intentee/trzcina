@@ -21,7 +21,7 @@ struct ReconciliationService {
 
 #[async_trait]
 impl Service for ReconciliationService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
+    async fn run(mut self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         let mut ticker = interval(Duration::from_millis(10));
         loop {
             tokio::select! {

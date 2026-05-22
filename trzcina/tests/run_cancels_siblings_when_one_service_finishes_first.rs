@@ -10,21 +10,24 @@ use trzcina::ServiceManager;
 use trzcina::ServiceShutdownOptions;
 use trzcina::ServiceShutdownOutcome;
 
-struct ConfiguredService {
-    finish_immediately: bool,
-    observation_tx: Option<oneshot::Sender<()>>,
+struct FinishImmediatelyService;
+
+#[async_trait]
+impl Service for FinishImmediatelyService {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
+        Ok(())
+    }
+}
+
+struct WaitingObserverService {
+    observation_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
-impl Service for ConfiguredService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
-        if self.finish_immediately {
-            return Ok(());
-        }
+impl Service for WaitingObserverService {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         cancellation_token.cancelled().await;
-        if let Some(observation_tx) = self.observation_tx.take() {
-            observation_tx.send(()).unwrap();
-        }
+        self.observation_tx.send(()).unwrap();
         Ok(())
     }
 }
@@ -32,18 +35,12 @@ impl Service for ConfiguredService {
 #[tokio::test]
 async fn cancels_siblings_when_one_service_finishes_first() {
     let mut manager = ServiceManager::default();
-    manager.register_service(ConfiguredService {
-        finish_immediately: true,
-        observation_tx: None,
-    });
+    manager.register_service(FinishImmediatelyService);
 
     let mut sibling_observation_receivers = Vec::new();
     for _ in 0..4 {
         let (observation_tx, observation_rx) = oneshot::channel::<()>();
-        manager.register_service(ConfiguredService {
-            finish_immediately: false,
-            observation_tx: Some(observation_tx),
-        });
+        manager.register_service(WaitingObserverService { observation_tx });
         sibling_observation_receivers.push(observation_rx);
     }
 

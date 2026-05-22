@@ -15,33 +15,39 @@ use trzcina::ServiceShutdownOutcome;
 
 const PRODUCED_VALUE: u32 = 42;
 
-struct CoordinatingService {
-    is_producer: bool,
+struct ProducerService {
     notify: Arc<Notify>,
-    observation_tx: Option<oneshot::Sender<u32>>,
     shared_state: Arc<Mutex<Option<u32>>>,
 }
 
 #[async_trait]
-impl Service for CoordinatingService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
-        if self.is_producer {
-            {
-                let mut guard = self.shared_state.lock().unwrap();
-                *guard = Some(PRODUCED_VALUE);
-            }
-            self.notify.notify_one();
-            cancellation_token.cancelled().await;
-            return Ok(());
+impl Service for ProducerService {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
+        {
+            let mut guard = self.shared_state.lock().unwrap();
+            *guard = Some(PRODUCED_VALUE);
         }
+        self.notify.notify_one();
+        cancellation_token.cancelled().await;
+        Ok(())
+    }
+}
+
+struct ConsumerService {
+    notify: Arc<Notify>,
+    observation_tx: oneshot::Sender<u32>,
+    shared_state: Arc<Mutex<Option<u32>>>,
+}
+
+#[async_trait]
+impl Service for ConsumerService {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         tokio::select! {
             () = cancellation_token.cancelled() => return Ok(()),
             () = self.notify.notified() => {
                 let observed_value = *self.shared_state.lock().unwrap();
-                if let Some(value) = observed_value
-                    && let Some(observation_tx) = self.observation_tx.take()
-                {
-                    observation_tx.send(value).unwrap();
+                if let Some(value) = observed_value {
+                    self.observation_tx.send(value).unwrap();
                 }
             }
         }
@@ -59,16 +65,13 @@ async fn coordinates_via_shared_holder_between_two_services() {
     let cancellation_token_for_run = cancellation_token.clone();
 
     let mut manager = ServiceManager::default();
-    manager.register_service(CoordinatingService {
-        is_producer: true,
+    manager.register_service(ProducerService {
         notify: notify.clone(),
-        observation_tx: None,
         shared_state: shared_state.clone(),
     });
-    manager.register_service(CoordinatingService {
-        is_producer: false,
+    manager.register_service(ConsumerService {
         notify: notify.clone(),
-        observation_tx: Some(observation_tx),
+        observation_tx,
         shared_state: shared_state.clone(),
     });
 

@@ -11,21 +11,24 @@ use trzcina::ServiceManager;
 use trzcina::ServiceShutdownOptions;
 use trzcina::ServiceShutdownOutcome;
 
-struct ConfiguredService {
-    return_err: bool,
-    observation_tx: Option<oneshot::Sender<()>>,
+struct ErroringService;
+
+#[async_trait]
+impl Service for ErroringService {
+    async fn run(self: Box<Self>, _cancellation_token: CancellationToken) -> Result<()> {
+        Err(anyhow!("erroring service deliberately failed"))
+    }
+}
+
+struct WaitingObserverService {
+    observation_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
-impl Service for ConfiguredService {
-    async fn run(&mut self, cancellation_token: CancellationToken) -> Result<()> {
-        if self.return_err {
-            return Err(anyhow!("erroring service deliberately failed"));
-        }
+impl Service for WaitingObserverService {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         cancellation_token.cancelled().await;
-        if let Some(observation_tx) = self.observation_tx.take() {
-            observation_tx.send(()).unwrap();
-        }
+        self.observation_tx.send(()).unwrap();
         Ok(())
     }
 }
@@ -34,19 +37,13 @@ impl Service for ConfiguredService {
 async fn records_all_failures_when_multiple_services_error() {
     let mut manager = ServiceManager::default();
     for _ in 0..3 {
-        manager.register_service(ConfiguredService {
-            return_err: true,
-            observation_tx: None,
-        });
+        manager.register_service(ErroringService);
     }
 
     let mut sibling_observation_receivers = Vec::new();
     for _ in 0..2 {
         let (observation_tx, observation_rx) = oneshot::channel::<()>();
-        manager.register_service(ConfiguredService {
-            return_err: false,
-            observation_tx: Some(observation_tx),
-        });
+        manager.register_service(WaitingObserverService { observation_tx });
         sibling_observation_receivers.push(observation_rx);
     }
 
