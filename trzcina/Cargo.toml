@@ -2,6 +2,7 @@
 name = "trzcina"
 version = "0.3.0"
 edition = "2024"
+rust-version = "1.95.0"
 license = "Apache-2.0"
 description = "Async service lifecycle orchestration with cooperative cancellation and shutdown deadlines."
 repository = "https://github.com/intentee/trzcina"
