@@ -65,6 +65,22 @@ async fn classify_service_outcome(
     }
 }
 
+fn deliver_outcome(
+    outcome_sender: oneshot::Sender<ServiceShutdownOutcome>,
+    service_name: &'static str,
+    outcome: ServiceShutdownOutcome,
+) -> bool {
+    match outcome_sender.send(outcome) {
+        Ok(()) => true,
+        Err(undelivered_outcome) => {
+            error!(
+                "Service {service_name:?} reported {undelivered_outcome:?} after shutdown completed; the outcome was discarded"
+            );
+            false
+        }
+    }
+}
+
 pub struct RunningServiceCollection {
     cancellation_token: CancellationToken,
     running_services: Vec<RunningService>,
@@ -72,7 +88,8 @@ pub struct RunningServiceCollection {
 }
 
 impl RunningServiceCollection {
-    pub(crate) fn start(
+    #[must_use]
+    pub fn start(
         registered: Vec<RegisteredService>,
         cancellation_token: CancellationToken,
     ) -> Self {
@@ -90,7 +107,7 @@ impl RunningServiceCollection {
                     service_cancellation_token,
                 )
                 .await;
-                let _ = outcome_sender.send(outcome);
+                deliver_outcome(outcome_sender, name, outcome);
             });
 
             running_services.push(RunningService::new(name, outcome_receiver));
@@ -153,5 +170,28 @@ impl RunningServiceCollection {
                 "Abort drain exceeded {abort_deadline:?}; one or more services ignored the abort signal and are leaked beyond the manager's lifetime",
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::sync::oneshot;
+
+    use crate::service_shutdown_outcome::ServiceShutdownOutcome;
+
+    use super::deliver_outcome;
+
+    #[test]
+    fn deliver_outcome_reports_false_when_receiver_is_gone() {
+        let (outcome_sender, outcome_receiver) = oneshot::channel::<ServiceShutdownOutcome>();
+        drop(outcome_receiver);
+
+        let delivered = deliver_outcome(
+            outcome_sender,
+            "leaked_service",
+            ServiceShutdownOutcome::Completed,
+        );
+
+        assert!(!delivered);
     }
 }

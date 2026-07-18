@@ -1,53 +1,25 @@
-use std::error::Error;
-use std::fmt;
-
-use crate::service_shutdown_outcome::ServiceShutdownOutcome;
+use crate::failed_service_outcomes::FailedServiceOutcomes;
 use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[error("{failed_outcomes}")]
 pub struct ServiceShutdownError {
-    failed_outcomes: Vec<ServiceShutdownOutcomeWithServiceName>,
+    failed_outcomes: FailedServiceOutcomes,
 }
 
 impl ServiceShutdownError {
     #[must_use]
     pub fn new(failed_outcomes: Vec<ServiceShutdownOutcomeWithServiceName>) -> Self {
-        Self { failed_outcomes }
+        Self {
+            failed_outcomes: FailedServiceOutcomes::new(failed_outcomes),
+        }
     }
 
     #[must_use]
     pub fn failed_outcomes(&self) -> &[ServiceShutdownOutcomeWithServiceName] {
-        &self.failed_outcomes
+        self.failed_outcomes.as_slice()
     }
 }
-
-impl fmt::Display for ServiceShutdownError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "service shutdown failed:")?;
-
-        for ServiceShutdownOutcomeWithServiceName { name, outcome } in &self.failed_outcomes {
-            match outcome {
-                ServiceShutdownOutcome::Completed => Ok(()),
-                ServiceShutdownOutcome::Errored(service_error) => {
-                    writeln!(f, "  service {name:?} errored: {service_error:#}")
-                }
-                ServiceShutdownOutcome::Panicked(panic_message) => {
-                    writeln!(f, "  service {name:?} panicked: {panic_message}")
-                }
-                ServiceShutdownOutcome::AbortedByShutdownDeadline => {
-                    writeln!(f, "  service {name:?} aborted after shutdown deadline")
-                }
-                ServiceShutdownOutcome::LeakedBeyondShutdownDeadline => {
-                    writeln!(f, "  service {name:?} leaked beyond shutdown deadline")
-                }
-            }?;
-        }
-
-        Ok(())
-    }
-}
-
-impl Error for ServiceShutdownError {}
 
 #[cfg(test)]
 mod tests {
@@ -56,8 +28,9 @@ mod tests {
 
     use anyhow::anyhow;
 
+    use crate::service_shutdown_outcome::ServiceShutdownOutcome;
+
     use super::ServiceShutdownError;
-    use super::ServiceShutdownOutcome;
     use super::ServiceShutdownOutcomeWithServiceName;
 
     struct AlwaysFailingWriter;

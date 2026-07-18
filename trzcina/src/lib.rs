@@ -1,3 +1,5 @@
+mod failed_service_outcomes;
+mod first_tick_timing;
 mod registered_service;
 mod running_service;
 mod running_service_collection;
@@ -10,7 +12,10 @@ mod service_shutdown_outcome;
 mod service_shutdown_outcome_collection;
 mod service_shutdown_outcome_with_service_name;
 mod sibling_cancellation_guard;
+mod tick_context;
+mod ticker;
 
+pub use crate::first_tick_timing::FirstTickTiming;
 pub use crate::running_service_collection::RunningServiceCollection;
 pub use crate::service::Service;
 pub use crate::service_bundle::ServiceBundle;
@@ -20,3 +25,5 @@ pub use crate::service_shutdown_options::ServiceShutdownOptions;
 pub use crate::service_shutdown_outcome::ServiceShutdownOutcome;
 pub use crate::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 pub use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
+pub use crate::tick_context::TickContext;
+pub use crate::ticker::Ticker;
