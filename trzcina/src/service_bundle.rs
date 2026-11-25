@@ -1,9 +1,9 @@
-use std::error::Error;
+use anyhow::Result;
+use async_trait::async_trait;
 
-use crate::registered_service::RegisteredService;
+use crate::Service;
 
+#[async_trait]
 pub trait ServiceBundle {
-    type Error: Error;
-
-    fn services(self) -> impl Future<Output = Result<Vec<RegisteredService>, Self::Error>> + Send;
+    async fn services(self) -> Result<Vec<Box<dyn Service>>>;
 }

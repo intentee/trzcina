@@ -1,28 +1,127 @@
+use std::any::Any;
+use std::panic::AssertUnwindSafe;
 use std::time::Duration;
 
-use futures_util::future::join_all;
+use futures_util::FutureExt;
 use log::error;
 use log::info;
+use tokio::sync::oneshot;
+use tokio::task::JoinSet;
+use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 
 use crate::registered_service::RegisteredService;
 use crate::running_service::RunningService;
+use crate::service::Service;
 use crate::service_shutdown_options::ServiceShutdownOptions;
+use crate::service_shutdown_outcome::ServiceShutdownOutcome;
 use crate::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
-use crate::service_shutdown_progress::ServiceShutdownProgress;
-use crate::service_shutdown_progress_collection::ServiceShutdownProgressCollection;
-use crate::shutdown_phase::ShutdownPhase;
-use crate::spawnable_service::SpawnableService;
-use crate::startable_service_collection::StartableServiceCollection;
+use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
+use crate::sibling_cancellation_guard::SiblingCancellationGuard;
+
+fn panic_payload_to_string(panic_payload: Box<dyn Any + Send>) -> String {
+    if let Some(static_str_message) = panic_payload.downcast_ref::<&'static str>() {
+        return (*static_str_message).to_owned();
+    }
+    if let Ok(boxed_message) = panic_payload.downcast::<String>() {
+        return *boxed_message;
+    }
+    "non-string panic payload".to_owned()
+}
+
+async fn run_service_with_sibling_cancellation_on_return(
+    service_name: &'static str,
+    service: Box<dyn Service>,
+    cancellation_token: CancellationToken,
+) -> ServiceShutdownOutcome {
+    let _sibling_cancellation_guard = SiblingCancellationGuard::new(cancellation_token.clone());
+    classify_service_outcome(service_name, service, cancellation_token).await
+}
+
+async fn classify_service_outcome(
+    service_name: &'static str,
+    service: Box<dyn Service>,
+    cancellation_token: CancellationToken,
+) -> ServiceShutdownOutcome {
+    info!("Service {service_name:?} starting");
+    let panic_caught_outcome = AssertUnwindSafe(service.run(cancellation_token))
+        .catch_unwind()
+        .await;
+
+    match panic_caught_outcome {
+        Ok(Ok(())) => {
+            info!("Service {service_name:?} stopped");
+            ServiceShutdownOutcome::Completed
+        }
+        Ok(Err(service_error)) => {
+            error!("Service {service_name:?} error: {service_error:#?}");
+            ServiceShutdownOutcome::Errored(service_error)
+        }
+        Err(panic_payload) => {
+            let panic_message = panic_payload_to_string(panic_payload);
+            error!("Service {service_name:?} panicked: {panic_message}");
+            ServiceShutdownOutcome::Panicked(panic_message)
+        }
+    }
+}
+
+fn deliver_outcome(
+    outcome_sender: oneshot::Sender<ServiceShutdownOutcome>,
+    service_name: &'static str,
+    outcome: ServiceShutdownOutcome,
+) -> bool {
+    match outcome_sender.send(outcome) {
+        Ok(()) => true,
+        Err(undelivered_outcome) => {
+            error!(
+                "Service {service_name:?} reported {undelivered_outcome:?} after shutdown completed; the outcome was discarded"
+            );
+            false
+        }
+    }
+}
 
 pub struct RunningServiceCollection {
     cancellation_token: CancellationToken,
     running_services: Vec<RunningService>,
+    task_set: JoinSet<()>,
 }
 
 impl RunningServiceCollection {
+    #[must_use]
+    pub fn start(
+        registered: Vec<RegisteredService>,
+        cancellation_token: CancellationToken,
+    ) -> Self {
+        let mut running_services: Vec<RunningService> = Vec::with_capacity(registered.len());
+        let mut task_set: JoinSet<()> = JoinSet::new();
+
+        for RegisteredService { name, service } in registered {
+            let (outcome_sender, outcome_receiver) = oneshot::channel::<ServiceShutdownOutcome>();
+            let service_cancellation_token = cancellation_token.clone();
+
+            task_set.spawn(async move {
+                let outcome = run_service_with_sibling_cancellation_on_return(
+                    name,
+                    service,
+                    service_cancellation_token,
+                )
+                .await;
+                deliver_outcome(outcome_sender, name, outcome);
+            });
+
+            running_services.push(RunningService::new(name, outcome_receiver));
+        }
+
+        Self {
+            cancellation_token,
+            running_services,
+            task_set,
+        }
+    }
+
     pub async fn run_to_completion(
-        self,
+        mut self,
         ServiceShutdownOptions {
             cooperative_deadline,
             abort_deadline,
@@ -30,28 +129,14 @@ impl RunningServiceCollection {
     ) -> ServiceShutdownOutcomeCollection {
         self.wait_for_shutdown_signal().await;
 
-        let cooperative_progress = self.stop_cooperatively(cooperative_deadline).await;
-        let final_progress = if cooperative_progress.has_still_running_services() {
-            error!("Shutdown deadline exceeded; aborting remaining services");
-            cooperative_progress.abort_within(abort_deadline).await
-        } else {
-            cooperative_progress
-        };
+        if !self.drain_within_deadline(cooperative_deadline).await {
+            self.abort_and_drain(abort_deadline).await;
+        }
 
-        final_progress.into_outcome_collection()
-    }
+        let outcomes: Vec<ServiceShutdownOutcomeWithServiceName> =
+            self.running_services.into_iter().map(Into::into).collect();
 
-    async fn stop_cooperatively(
-        self,
-        cooperative_deadline: Duration,
-    ) -> ServiceShutdownProgressCollection {
-        ServiceShutdownProgressCollection::new(
-            join_all(self.running_services.into_iter().map(|running_service| {
-                ServiceShutdownProgress::StillRunning(running_service)
-                    .wait_within(cooperative_deadline, ShutdownPhase::Cooperative)
-            }))
-            .await,
-        )
+        ServiceShutdownOutcomeCollection::new(outcomes)
     }
 
     async fn wait_for_shutdown_signal(&self) {
@@ -62,42 +147,51 @@ impl RunningServiceCollection {
         self.cancellation_token.cancelled().await;
         info!("Service is shutting down");
     }
-}
 
-impl StartableServiceCollection for RunningServiceCollection {
-    fn start(
-        registered_services: Vec<RegisteredService>,
-        cancellation_token: CancellationToken,
-    ) -> Self {
-        let running_services: Vec<RunningService> = registered_services
-            .into_iter()
-            .map(|registered_service| registered_service.spawn(cancellation_token.clone()))
-            .collect();
+    async fn drain_within_deadline(&mut self, deadline: Duration) -> bool {
+        timeout(deadline, async {
+            while self.task_set.join_next().await.is_some() {}
+        })
+        .await
+        .is_ok()
+    }
 
-        Self {
-            cancellation_token,
-            running_services,
+    async fn abort_and_drain(&mut self, abort_deadline: Duration) {
+        error!("Shutdown deadline exceeded; aborting remaining services");
+        self.task_set.abort_all();
+
+        let abort_drain_result = timeout(abort_deadline, async {
+            while self.task_set.join_next().await.is_some() {}
+        })
+        .await;
+
+        if abort_drain_result.is_err() {
+            error!(
+                "Abort drain exceeded {abort_deadline:?}; one or more services ignored the abort signal and are leaked beyond the manager's lifetime",
+            );
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use futures_util::FutureExt;
-    use tokio_util::sync::CancellationToken;
+    use tokio::sync::oneshot;
 
-    use crate::service_shutdown_options::ServiceShutdownOptions;
-    use crate::startable_service_collection::StartableServiceCollection;
+    use crate::service_shutdown_outcome::ServiceShutdownOutcome;
 
-    use super::RunningServiceCollection;
+    use super::deliver_outcome;
 
     #[test]
-    fn completes_immediately_without_services() {
-        assert!(matches!(
-            RunningServiceCollection::start(Vec::new(), CancellationToken::new())
-                .run_to_completion(ServiceShutdownOptions::default())
-                .now_or_never(),
-            Some(shutdown_report) if shutdown_report.outcomes().is_empty()
-        ));
+    fn deliver_outcome_reports_false_when_receiver_is_gone() {
+        let (outcome_sender, outcome_receiver) = oneshot::channel::<ServiceShutdownOutcome>();
+        drop(outcome_receiver);
+
+        let delivered = deliver_outcome(
+            outcome_sender,
+            "leaked_service",
+            ServiceShutdownOutcome::Completed,
+        );
+
+        assert!(!delivered);
     }
 }

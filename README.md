@@ -1,37 +1,37 @@
 # trzcina
 
-Async service lifecycle orchestration for Rust.
+Async service lifecycle orchestration for Rust. Run a set of long-lived async services concurrently, cancel siblings when one finishes, surface errors and panics through a typed outcome collection, and enforce per-phase shutdown deadlines.
+
+## Usage
 
 ```rust
-use std::convert::Infallible;
-
+use anyhow::Result;
+use async_trait::async_trait;
 use tokio_util::sync::CancellationToken;
-use trzcina::service::Service;
-use trzcina::service_manager::ServiceManager;
-use trzcina::service_shutdown_error::ServiceShutdownError;
-use trzcina::service_shutdown_options::ServiceShutdownOptions;
+use trzcina::{Service, ServiceManager, ServiceShutdownOptions};
 
 struct EchoService;
 
+#[async_trait]
 impl Service for EchoService {
-    type Error = Infallible;
-
-    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<(), Infallible> {
+    async fn run(self: Box<Self>, cancellation_token: CancellationToken) -> Result<()> {
         cancellation_token.cancelled().await;
-
         Ok(())
     }
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Vec<ServiceShutdownError>> {
+async fn main() -> Result<()> {
     let mut service_manager = ServiceManager::default();
     service_manager.register_service(EchoService);
 
-    service_manager
-        .start(CancellationToken::new())
+    let running = service_manager.start(CancellationToken::new());
+    running
         .run_to_completion(ServiceShutdownOptions::default())
         .await
-        .into_result()
+        .into_result()?;
+    Ok(())
 }
 ```
+
+`ServiceShutdownOptions` exposes two independently tunable deadlines that apply after the cancellation token fires: `cooperative_deadline` (how long services have to exit on their own) and `abort_deadline` (how long the tokio abort has to drain). Both default to 10 seconds.

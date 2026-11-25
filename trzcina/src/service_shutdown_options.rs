@@ -1,12 +1,8 @@
 use std::time::Duration;
 
-/// Deadlines that apply once the cancellation token fires; both default to 10 seconds, and a deadline beyond
-/// `TOKIO_SAFE_DELAY_CAP` never elapses.
 #[derive(Clone)]
 pub struct ServiceShutdownOptions {
-    /// How long services have to stop on their own.
     pub cooperative_deadline: Duration,
-    /// How long services still running after the cooperative deadline have to stop once aborted.
     pub abort_deadline: Duration,
 }
 
@@ -34,5 +30,17 @@ mod tests {
 
         assert_eq!(cooperative_deadline, Duration::from_secs(10));
         assert_eq!(abort_deadline, Duration::from_secs(10));
+    }
+
+    #[test]
+    fn can_be_cloned() {
+        let original = ServiceShutdownOptions {
+            cooperative_deadline: Duration::from_millis(7),
+            abort_deadline: Duration::from_millis(11),
+        };
+        let cloned = original.clone();
+
+        assert_eq!(original.cooperative_deadline, cloned.cooperative_deadline);
+        assert_eq!(original.abort_deadline, cloned.abort_deadline);
     }
 }
