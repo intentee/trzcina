@@ -10,6 +10,7 @@ use crate::test_failure::TestFailure;
 use crate::tick_recorder::TickRecorder;
 
 pub struct FirstTickStallingTicker {
+    pub first_tick_began: CancellationToken,
     pub first_tick_release: CancellationToken,
     pub first_tick_timing: FirstTickTiming,
     pub missed_tick_behavior: MissedTickBehavior,
@@ -32,6 +33,7 @@ impl Ticker for FirstTickStallingTicker {
         }: TickContext,
     ) -> Result<(), TestFailure> {
         if ticks_since_start == 0 {
+            self.first_tick_began.cancel();
             self.first_tick_release.cancelled().await;
         }
 

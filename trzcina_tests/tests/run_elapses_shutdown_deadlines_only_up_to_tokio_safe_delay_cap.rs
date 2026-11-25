@@ -14,9 +14,11 @@ use trzcina::service_shutdown_options::ServiceShutdownOptions;
 use trzcina::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use trzcina_tests::block_on_paused_runtime::block_on_paused_runtime;
 use trzcina_tests::cancellation_ignoring_service::CancellationIgnoringService;
+use trzcina_tests::cooperative_shutdown::CooperativeShutdown;
 use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::release_awaiting_service::ReleaseAwaitingService;
 use trzcina_tests::services_runtime::ServicesRuntime;
+use trzcina_tests::timed_run::TimedRun;
 use trzcina_tests::waiting_observer_service::WaitingObserverService;
 use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
@@ -104,14 +106,16 @@ fn elapses_shutdown_deadlines_only_up_to_tokio_safe_delay_cap() {
     let released_after_deadline_beyond_cap = TOKIO_SAFE_DELAY_CAP + TOKIO_TIMER_GRANULARITY;
 
     assert!(matches!(
-        block_on_paused_runtime(cooperative_phase_result_released_after(
-            TOKIO_SAFE_DELAY_CAP,
-            TOKIO_SAFE_DELAY_CAP
+        block_on_paused_runtime(CooperativeShutdown::measure_alongside_aborted_service(
+            ServiceShutdownOptions {
+                cooperative_deadline: TOKIO_SAFE_DELAY_CAP,
+                ..ServiceShutdownOptions::default()
+            }
         )),
-        Ok(Ok(Err(failures))) if matches!(
-            failures.as_slice(),
-            [ServiceShutdownError::AbortedByShutdownDeadline { .. }]
-        )
+        Ok(CooperativeShutdown {
+            timed_shutdown: TimedRun { elapsed, .. },
+            ..
+        }) if elapsed == TOKIO_SAFE_DELAY_CAP
     ));
     assert!(matches!(
         block_on_paused_runtime(cooperative_phase_result_released_after(

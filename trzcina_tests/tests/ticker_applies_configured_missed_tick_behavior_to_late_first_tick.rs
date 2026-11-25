@@ -29,6 +29,7 @@ async fn record_ticks_after_first_tick_is_processed_late(
 
     record_tick_contexts(
         |tick_recorder| FirstTickStallingTicker {
+            first_tick_began: CancellationToken::new(),
             first_tick_release,
             first_tick_timing,
             missed_tick_behavior,

@@ -28,14 +28,12 @@ async fn record_ticks_after_first_tick_stalls(
     missed_tick_behavior: MissedTickBehavior,
     first_tick_stall: Duration,
 ) -> Result<Vec<TickContext>, TestFailure> {
+    let first_tick_began = CancellationToken::new();
     let first_tick_release = CancellationToken::new();
-    let first_tick_delay = match first_tick_timing {
-        FirstTickTiming::AfterInterval => TickInterval::default().period(),
-        FirstTickTiming::Immediate => Duration::ZERO,
-    };
 
     record_tick_contexts(
         |tick_recorder| FirstTickStallingTicker {
+            first_tick_began: first_tick_began.clone(),
             first_tick_release: first_tick_release.clone(),
             first_tick_timing,
             missed_tick_behavior,
@@ -43,7 +41,7 @@ async fn record_ticks_after_first_tick_stalls(
             tick_time_limit: TickTimeLimit::Unlimited,
         },
         |_cancellation_token| async {
-            advance(first_tick_delay).await;
+            first_tick_began.cancelled().await;
             advance(first_tick_stall).await;
             first_tick_release.cancel();
         },

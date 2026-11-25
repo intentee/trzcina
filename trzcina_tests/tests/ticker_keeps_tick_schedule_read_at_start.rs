@@ -26,6 +26,7 @@ async fn record_ticks_after_tick_schedule_switches(
     record_tick_contexts(
         |tick_recorder| TickScheduleSwitchingTicker {
             first_tick_stalling_ticker: FirstTickStallingTicker {
+                first_tick_began: CancellationToken::new(),
                 first_tick_release: first_tick_release.clone(),
                 first_tick_timing: FirstTickTiming::Immediate,
                 missed_tick_behavior: MissedTickBehavior::Burst,

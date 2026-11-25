@@ -22,6 +22,7 @@ async fn never_skips_tick_with_time_limit_beyond_tokio_safe_delay_cap() {
     assert_eq!(
         record_tick_contexts(
             |tick_recorder| FirstTickStallingTicker {
+                first_tick_began: CancellationToken::new(),
                 first_tick_release: first_tick_release.clone(),
                 first_tick_timing: FirstTickTiming::Immediate,
                 missed_tick_behavior: MissedTickBehavior::Delay,

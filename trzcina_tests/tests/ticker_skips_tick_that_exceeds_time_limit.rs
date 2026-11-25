@@ -22,6 +22,7 @@ async fn skips_tick_that_exceeds_time_limit() {
     let tick_time_limit = tick_period * 2;
     let TimedRun { elapsed, output } = TimedRun::measure(record_tick_contexts(
         |tick_recorder| FirstTickStallingTicker {
+            first_tick_began: CancellationToken::new(),
             first_tick_release: CancellationToken::new(),
             first_tick_timing: FirstTickTiming::Immediate,
             missed_tick_behavior: MissedTickBehavior::Delay,
