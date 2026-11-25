@@ -2,13 +2,13 @@ use tokio::time::MissedTickBehavior;
 use tokio::time::advance;
 use tokio_util::sync::CancellationToken;
 
-use trzcina::constants::TOKIO_SAFE_DELAY_CAP;
 use trzcina_tests::expected_tick_contexts::ExpectedTickContexts;
 use trzcina_tests::first_tick_stalling_ticker::FirstTickStallingTicker;
 use trzcina_tests::record_tick_contexts::record_tick_contexts;
 use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::tick_time_limit::TickTimeLimit;
+use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
 use crate::constants::SMALLEST_DURATION_STEP;
 use crate::constants::TOKIO_TIMER_GRANULARITY;

@@ -225,6 +225,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-util",
+ "trzcina_tokio_safe_delay",
 ]
 
 [[package]]
@@ -239,6 +240,7 @@ dependencies = [
  "tokio-util",
  "trzcina",
  "trzcina_ticker",
+ "trzcina_tokio_safe_delay",
 ]
 
 [[package]]
@@ -250,6 +252,15 @@ dependencies = [
  "tokio",
  "tokio-util",
  "trzcina",
+ "trzcina_tokio_safe_delay",
+]
+
+[[package]]
+name = "trzcina_tokio_safe_delay"
+version = "0.5.0"
+dependencies = [
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

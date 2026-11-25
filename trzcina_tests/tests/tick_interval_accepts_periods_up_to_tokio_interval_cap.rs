@@ -4,6 +4,7 @@ use tokio::time::interval;
 
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::ticker_error::TickerError;
+use trzcina_tokio_safe_delay::tokio_safe_delay_error::TokioSafeDelayError;
 
 use crate::constants::SMALLEST_DURATION_STEP;
 
@@ -19,8 +20,10 @@ async fn accepts_periods_up_to_tokio_interval_cap() {
     assert_eq!(
         TickInterval::new(period_beyond_cap),
         Err(TickerError::TickIntervalTooLong {
-            longest_period: tokio_interval_period_cap,
-            period: period_beyond_cap,
+            source: TokioSafeDelayError::DurationBeyondCap {
+                duration: period_beyond_cap,
+                longest_duration: tokio_interval_period_cap,
+            },
         })
     );
 }

@@ -1,10 +1,11 @@
 use std::time::Duration;
 
+use trzcina_tokio_safe_delay::timeout_within_tokio_safe_delay_cap::timeout_within_tokio_safe_delay_cap;
+
 use crate::running_service::RunningService;
 use crate::service_shutdown_outcome::ServiceShutdownOutcome;
 use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
 use crate::shutdown_phase::ShutdownPhase;
-use crate::timeout_within_tokio_safe_delay_cap::timeout_within_tokio_safe_delay_cap;
 
 pub enum ServiceShutdownProgress {
     StillRunning(RunningService),

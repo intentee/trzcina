@@ -8,7 +8,6 @@ use tokio::task::spawn_blocking;
 use tokio::time::advance;
 use tokio_util::sync::CancellationToken;
 
-use trzcina::constants::TOKIO_SAFE_DELAY_CAP;
 use trzcina::service_manager::ServiceManager;
 use trzcina::service_shutdown_error::ServiceShutdownError;
 use trzcina::service_shutdown_options::ServiceShutdownOptions;
@@ -19,6 +18,7 @@ use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::release_awaiting_service::ReleaseAwaitingService;
 use trzcina_tests::services_runtime::ServicesRuntime;
 use trzcina_tests::waiting_observer_service::WaitingObserverService;
+use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
 use crate::constants::SMALLEST_DURATION_STEP;
 use crate::constants::TOKIO_TIMER_GRANULARITY;

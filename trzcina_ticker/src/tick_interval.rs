@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use trzcina::constants::TOKIO_SAFE_DELAY_CAP;
+use trzcina_tokio_safe_delay::ensure_within_tokio_safe_delay_cap::ensure_within_tokio_safe_delay_cap;
 
 use crate::ticker_error::TickerError;
 
@@ -18,13 +18,13 @@ impl TickInterval {
     pub const fn new(period: Duration) -> Result<Self, TickerError> {
         if period.is_zero() {
             Err(TickerError::ZeroTickInterval)
-        } else if period.as_nanos() > TOKIO_SAFE_DELAY_CAP.as_nanos() {
-            Err(TickerError::TickIntervalTooLong {
-                longest_period: TOKIO_SAFE_DELAY_CAP,
-                period,
-            })
         } else {
-            Ok(Self { period })
+            match ensure_within_tokio_safe_delay_cap(period) {
+                Ok(period_within_cap) => Ok(Self {
+                    period: period_within_cap,
+                }),
+                Err(source) => Err(TickerError::TickIntervalTooLong { source }),
+            }
         }
     }
 

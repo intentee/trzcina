@@ -20,6 +20,7 @@ log = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time"] }
 tokio-util = { workspace = true, features = ["rt"] }
+trzcina_tokio_safe_delay = { workspace = true }
 
 [lints]
 workspace = true

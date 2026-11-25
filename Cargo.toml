@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["trzcina", "trzcina_tests", "trzcina_ticker"]
+members = ["trzcina", "trzcina_tests", "trzcina_ticker", "trzcina_tokio_safe_delay"]
 
 [workspace.package]
 authors = ["Intentee"]
@@ -21,6 +21,7 @@ tokio = "1.54"
 tokio-util = "0.7"
 trzcina = { version = "0.5", path = "trzcina" }
 trzcina_ticker = { path = "trzcina_ticker" }
+trzcina_tokio_safe_delay = { version = "0.5", path = "trzcina_tokio_safe_delay" }
 
 [workspace.lints.rust]
 warnings = "deny"

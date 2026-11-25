@@ -6,7 +6,7 @@ use tokio::time::interval_at;
 use tokio_util::sync::CancellationToken;
 
 use trzcina::service::Service;
-use trzcina::timeout_within_tokio_safe_delay_cap::timeout_within_tokio_safe_delay_cap;
+use trzcina_tokio_safe_delay::timeout_within_tokio_safe_delay_cap::timeout_within_tokio_safe_delay_cap;
 
 use crate::first_tick_timing::FirstTickTiming;
 use crate::tick_clock::TickClock;

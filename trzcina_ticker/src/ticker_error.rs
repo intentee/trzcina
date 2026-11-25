@@ -1,14 +1,9 @@
-use std::time::Duration;
+use trzcina_tokio_safe_delay::tokio_safe_delay_error::TokioSafeDelayError;
 
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum TickerError {
-    #[error(
-        "tick interval of {period:?} is longer than the longest supported period of {longest_period:?}"
-    )]
-    TickIntervalTooLong {
-        longest_period: Duration,
-        period: Duration,
-    },
+    #[error("tick interval is longer than tokio intervals can schedule")]
+    TickIntervalTooLong { source: TokioSafeDelayError },
     #[error("tick interval must be longer than zero")]
     ZeroTickInterval,
 }

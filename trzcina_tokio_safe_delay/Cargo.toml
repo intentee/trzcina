@@ -1,0 +1,22 @@
+[package]
+name = "trzcina_tokio_safe_delay"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Durations within the longest delay tokio timers schedule, for the trzcina async service lifecycle orchestrator."
+repository.workspace = true
+readme.workspace = true
+authors.workspace = true
+keywords = ["async", "timeout", "timer", "delay", "tokio"]
+categories.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
+
+[lints]
+workspace = true
