@@ -18,9 +18,10 @@ use trzcina_tests::cancellation_ignoring_service::CancellationIgnoringService;
 use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::release_awaiting_service::ReleaseAwaitingService;
 use trzcina_tests::services_runtime::ServicesRuntime;
-use trzcina_tests::smallest_duration_step::SMALLEST_DURATION_STEP;
-use trzcina_tests::tokio_timer_granularity::TOKIO_TIMER_GRANULARITY;
 use trzcina_tests::waiting_observer_service::WaitingObserverService;
+
+use crate::constants::SMALLEST_DURATION_STEP;
+use crate::constants::TOKIO_TIMER_GRANULARITY;
 
 async fn cooperative_phase_result_released_after(
     cooperative_deadline: Duration,

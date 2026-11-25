@@ -6,7 +6,6 @@ use tokio::time::advance;
 use tokio_util::sync::CancellationToken;
 
 use trzcina_tests::expected_tick_contexts::ExpectedTickContexts;
-use trzcina_tests::move_clock_off_timer_grid::move_clock_off_timer_grid;
 use trzcina_tests::record_tick_contexts::record_tick_contexts;
 use trzcina_tests::test_failure::TestFailure;
 use trzcina_tests::tick_recorder::TickRecorder;
@@ -14,6 +13,8 @@ use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::ticker::Ticker;
+
+use crate::constants::SMALLEST_DURATION_STEP;
 
 const TICKS_BEFORE_CANCELLATION: usize = 2;
 
@@ -49,7 +50,7 @@ async fn reads_missed_tick_behavior_before_delayed_first_tick() {
     let (missed_tick_behavior_sender, missed_tick_behavior) =
         watch::channel(MissedTickBehavior::Burst);
 
-    move_clock_off_timer_grid().await;
+    advance(SMALLEST_DURATION_STEP).await;
 
     assert_eq!(
         record_tick_contexts(

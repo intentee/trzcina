@@ -6,13 +6,14 @@ use tokio_util::sync::CancellationToken;
 
 use trzcina_tests::expected_tick_contexts::ExpectedTickContexts;
 use trzcina_tests::first_tick_stalling_ticker::FirstTickStallingTicker;
-use trzcina_tests::move_clock_off_timer_grid::move_clock_off_timer_grid;
 use trzcina_tests::record_tick_contexts::record_tick_contexts;
 use trzcina_tests::test_failure::TestFailure;
 use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::tick_time_limit::TickTimeLimit;
+
+use crate::constants::SMALLEST_DURATION_STEP;
 
 const TICKS_BEFORE_CANCELLATION: usize = 2;
 
@@ -24,7 +25,7 @@ async fn record_ticks_after_first_tick_is_processed_late(
     let first_tick_release = CancellationToken::new();
 
     first_tick_release.cancel();
-    move_clock_off_timer_grid().await;
+    advance(SMALLEST_DURATION_STEP).await;
 
     record_tick_contexts(
         |tick_recorder| FirstTickStallingTicker {

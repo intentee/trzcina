@@ -1,3 +1,4 @@
+mod constants;
 mod dropping_running_services_aborts_them;
 mod register_bundle_appends_bundle_services_after_registered_services;
 mod register_bundle_runs_bundle_services_in_order;

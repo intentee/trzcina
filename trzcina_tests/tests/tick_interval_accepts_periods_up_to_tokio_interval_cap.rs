@@ -2,9 +2,10 @@ use std::time::Duration;
 
 use tokio::time::interval;
 
-use trzcina_tests::smallest_duration_step::SMALLEST_DURATION_STEP;
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::ticker_error::TickerError;
+
+use crate::constants::SMALLEST_DURATION_STEP;
 
 #[tokio::test]
 async fn accepts_periods_up_to_tokio_interval_cap() {
