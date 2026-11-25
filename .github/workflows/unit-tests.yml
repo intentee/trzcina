@@ -17,6 +17,9 @@ jobs:
       - name: setup rust
         uses: ./.github/actions/setup-rust
 
+      - name: install cargo-nextest
+        uses: ./.github/actions/install-cargo-nextest
+
       - name: run tests
         run: make rust-test
 
