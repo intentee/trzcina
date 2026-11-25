@@ -1,4 +1,8 @@
-use futures_util::future::join;
+use std::pin::pin;
+use std::task::Poll;
+
+use futures_util::future::Either;
+use futures_util::future::poll_fn;
 use tokio_util::sync::CancellationToken;
 
 use trzcina::service::Service;
@@ -19,11 +23,23 @@ impl<TRunOutput, TObservation> ObservedRun<TRunOutput, TObservation> {
         TRun: Future<Output = TRunOutput>,
         TObserved: Future<Output = TObservation>,
     {
-        let (run_output, observation) = join(run, observed).await;
+        let mut run = pin!(run);
+        let mut observed = pin!(observed);
+        let first_finished = poll_fn(|context| match run.as_mut().poll(context) {
+            Poll::Ready(run_output) => Poll::Ready(Either::Left(run_output)),
+            Poll::Pending => observed.as_mut().poll(context).map(Either::Right),
+        })
+        .await;
 
-        Self {
-            observation,
-            run_output,
+        match first_finished {
+            Either::Left(run_output) => Self {
+                observation: observed.await,
+                run_output,
+            },
+            Either::Right(observation) => Self {
+                observation,
+                run_output: run.await,
+            },
         }
     }
 
