@@ -3,6 +3,8 @@ HEISENBERG_ARGUMENTS = --cargo-home "$(CARGO_HOME)" --sysroot "$(shell rustc --p
 RUST_SOURCES = $(wildcard */src/*.rs */tests/*.rs)
 WORKSPACE_MANIFESTS = Cargo.lock Cargo.toml $(wildcard */Cargo.toml)
 
+.NOTPARALLEL:
+
 target/lcov.info: target/llvm-cov.json
 	cargo llvm-cov report --lcov --include-build-script --output-path $@
 
