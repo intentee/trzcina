@@ -6,25 +6,44 @@ use trzcina::service_shutdown_outcome::ServiceShutdownOutcome;
 use trzcina::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use trzcina::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
 use trzcina_tests::cancellation_ignoring_service::CancellationIgnoringService;
+use trzcina_tests::completing_service::CompletingService;
+use trzcina_tests::erroring_service::ErroringService;
 use trzcina_tests::observed_run::ObservedRun;
+use trzcina_tests::panicking_service::PanickingService;
+use trzcina_tests::test_failure::TestFailure;
 use trzcina_tests::thread_blocking_control::ThreadBlockingControl;
+
+const PANIC_MESSAGE: &str = "deliberately panicking once released in the abort phase";
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn keeps_outcome_of_each_service_in_abort_phase() {
     let mut manager = ServiceManager::default();
     let ThreadBlockingControl {
-        release_sender: release_on_abort,
-        started_receiver: released_on_abort_started,
-    } = ThreadBlockingControl::register(&mut manager);
+        release_sender: completing_release,
+        started_receiver: completing_started,
+    } = ThreadBlockingControl::register(&mut manager, CompletingService);
+    let ThreadBlockingControl {
+        release_sender: erroring_release,
+        started_receiver: erroring_started,
+    } = ThreadBlockingControl::register(&mut manager, ErroringService);
+    let ThreadBlockingControl {
+        release_sender: panicking_release,
+        started_receiver: panicking_started,
+    } = ThreadBlockingControl::register(
+        &mut manager,
+        PanickingService {
+            panic_payload: Box::new(PANIC_MESSAGE),
+        },
+    );
 
     manager.register_service(CancellationIgnoringService {
-        held_until_abort: release_on_abort,
+        held_until_abort: vec![completing_release, erroring_release, panicking_release],
     });
 
     let ThreadBlockingControl {
         release_sender: release_after_shutdown,
         started_receiver: leaking_started,
-    } = ThreadBlockingControl::register(&mut manager);
+    } = ThreadBlockingControl::register(&mut manager, CompletingService);
     let observed_run = ObservedRun::shutdown_after_observation(
         manager,
         ServiceShutdownOptions {
@@ -32,7 +51,9 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
             ..ServiceShutdownOptions::default()
         },
         async {
-            released_on_abort_started.await?;
+            completing_started.await?;
+            erroring_started.await?;
+            panicking_started.await?;
             leaking_started.await
         },
     )
@@ -51,6 +72,14 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
                 ..
             },
             ServiceShutdownOutcomeWithServiceName {
+                outcome: ServiceShutdownOutcome::Errored(source),
+                ..
+            },
+            ServiceShutdownOutcomeWithServiceName {
+                outcome: ServiceShutdownOutcome::Panicked(panic_message),
+                ..
+            },
+            ServiceShutdownOutcomeWithServiceName {
                 outcome: ServiceShutdownOutcome::AbortedByShutdownDeadline,
                 ..
             },
@@ -58,6 +87,7 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
                 outcome: ServiceShutdownOutcome::LeakedBeyondShutdownDeadline,
                 ..
             },
-        ])
+        ]) if TestFailure::DeliberateServiceFailure.is_erased_as(source.as_ref())
+            && panic_message == PANIC_MESSAGE
     ));
 }

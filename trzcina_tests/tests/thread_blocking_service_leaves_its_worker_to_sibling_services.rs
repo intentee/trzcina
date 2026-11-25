@@ -2,6 +2,7 @@ use tokio::sync::oneshot;
 
 use trzcina::service_manager::ServiceManager;
 use trzcina::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
+use trzcina_tests::completing_service::CompletingService;
 use trzcina_tests::observable_service::ObservableService;
 use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::run_with_default_shutdown::run_with_default_shutdown;
@@ -13,7 +14,7 @@ async fn leaves_its_worker_to_sibling_services() {
     let ThreadBlockingControl {
         release_sender,
         started_receiver,
-    } = ThreadBlockingControl::register(&mut manager);
+    } = ThreadBlockingControl::register(&mut manager, CompletingService);
     let (sibling_observation_sender, sibling_observation_receiver) = oneshot::channel::<()>();
 
     manager.register_service(ObservableService {

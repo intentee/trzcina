@@ -1,5 +1,6 @@
 pub mod block_on_paused_runtime;
 pub mod cancellation_ignoring_service;
+pub mod completing_service;
 pub mod cooperative_shutdown;
 pub mod drop_panicking_value;
 pub mod erroring_service;

@@ -10,20 +10,24 @@ use trzcina::service::Service;
 use crate::observation_sender::ObservationSender;
 use crate::test_failure::TestFailure;
 
-pub struct ThreadBlockingService {
+pub struct ThreadBlockingService<TReleasedService> {
     pub release_receiver: Receiver<Infallible>,
+    pub released_service: TReleasedService,
     pub started_sender: ObservationSender,
 }
 
-impl Service for ThreadBlockingService {
+impl<TReleasedService: Service<Error = TestFailure>> Service
+    for ThreadBlockingService<TReleasedService>
+{
     type Error = TestFailure;
 
     fn run(
         self: Box<Self>,
-        _cancellation_token: CancellationToken,
+        cancellation_token: CancellationToken,
     ) -> impl Future<Output = Result<(), TestFailure>> + Send {
         let Self {
             release_receiver,
+            released_service,
             started_sender,
         } = *self;
 
@@ -33,7 +37,7 @@ impl Service for ThreadBlockingService {
                 let Err(RecvError) = release_receiver.recv();
             });
 
-            Ok(())
+            Box::new(released_service).run(cancellation_token).await
         }
     }
 }
