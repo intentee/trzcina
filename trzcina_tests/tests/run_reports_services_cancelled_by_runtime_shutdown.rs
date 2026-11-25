@@ -35,14 +35,20 @@ fn reports_services_cancelled_by_runtime_shutdown() {
     manager.register_service(CancellationIgnoringService {
         held_until_abort: (),
     });
+    manager.register_service(CancellationIgnoringService {
+        held_until_abort: (),
+    });
 
     assert!(matches!(
         shut_down_after_services_runtime_shutdown(manager)
             .map(ServiceShutdownOutcomeCollection::into_result),
         Ok(Err(failures)) if matches!(
             failures.as_slice(),
-            [ServiceShutdownError::CancelledByRuntimeShutdown { service_name }]
-                if *service_name == type_name::<CancellationIgnoringService<()>>()
+            [
+                ServiceShutdownError::CancelledByRuntimeShutdown { service_name: first_service_name },
+                ServiceShutdownError::CancelledByRuntimeShutdown { service_name: second_service_name },
+            ] if *first_service_name == type_name::<CancellationIgnoringService<()>>()
+                && *second_service_name == type_name::<CancellationIgnoringService<()>>()
         )
     ));
 }
