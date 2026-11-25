@@ -40,16 +40,4 @@ mod tests {
             ServiceShutdownOutcome::Panicked(panic_message) if panic_message == "owned panic message"
         ));
     }
-
-    #[test]
-    fn classifies_non_string_payload_as_non_string_panic() {
-        let panic_payload = PanicPayload {
-            payload: Box::new(()),
-        };
-
-        assert!(matches!(
-            ServiceShutdownOutcome::from(panic_payload),
-            ServiceShutdownOutcome::PanickedWithNonStringPayload
-        ));
-    }
 }

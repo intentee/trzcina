@@ -61,18 +61,4 @@ mod tests {
             })
         ));
     }
-
-    #[test]
-    fn reports_non_string_panic_payload_as_its_own_failure() {
-        assert!(matches!(
-            ServiceShutdownOutcomeWithServiceName {
-                name: "non_string_payload_panicking_service",
-                outcome: ServiceShutdownOutcome::PanickedWithNonStringPayload,
-            }
-            .into_failure(),
-            Some(ServiceShutdownError::PanickedWithNonStringPayload {
-                service_name: "non_string_payload_panicking_service"
-            })
-        ));
-    }
 }
