@@ -31,3 +31,31 @@ impl TickClock {
         tick_context
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::panic::catch_unwind;
+
+    use tokio::time::Instant;
+
+    use super::TickClock;
+
+    #[test]
+    fn crashes_instead_of_wrapping_when_tick_count_overflows() {
+        let started_at = Instant::now();
+        let tick_clock = TickClock {
+            last_tick_at: started_at,
+            started_at,
+            ticks_since_start: u64::MAX,
+        };
+
+        assert!(
+            catch_unwind(move || {
+                let mut overflowing_tick_clock = tick_clock;
+
+                overflowing_tick_clock.record_tick(started_at)
+            })
+            .is_err()
+        );
+    }
+}
