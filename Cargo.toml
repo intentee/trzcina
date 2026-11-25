@@ -1,16 +1,56 @@
 [workspace]
 resolver = "3"
-members = ["trzcina"]
+members = ["trzcina", "trzcina_tests", "trzcina_ticker"]
+
+[workspace.package]
+authors = ["Intentee"]
+categories = ["asynchronous", "concurrency"]
+edition = "2024"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/intentee/trzcina"
+rust-version = "1.100.0"
+version = "0.5.0"
 
 [workspace.dependencies]
-anyhow = "1.0"
-async-trait = "0.1"
-futures-util = "0.3"
-log = "0.4.27"
+env_logger = { version = "0.11", default-features = false }
+futures-util = { version = "0.3", default-features = false }
+log = "0.4"
 thiserror = "2.0"
-tokio = { version = "1.45", features = ["full", "time"] }
+tokio = "1.54"
 tokio-util = "0.7"
+trzcina = { version = "0.5", path = "trzcina" }
+trzcina_ticker = { path = "trzcina_ticker" }
+
+[workspace.lints.rust]
+warnings = "deny"
 
 [workspace.lints.clippy]
-ignored_unit_patterns = "warn"
-must_use_candidate = "warn"
+all = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+arithmetic_side_effects = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+panic = "deny"
+panic_in_result_fn = "deny"
+string_slice = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+unwrap_used = "deny"
+
+[workspace.metadata.heisenberg]
+test_crates = ["trzcina_tests"]
+
+[[workspace.metadata.heisenberg.configurations]]
+name = "x86_64-pc-windows-msvc"
+target = "x86_64-pc-windows-msvc"
+default_features = true
+features = []
+
+[[workspace.metadata.heisenberg.configurations]]
+name = "x86_64-unknown-linux-gnu"
+target = "x86_64-unknown-linux-gnu"
+default_features = true
+features = []

@@ -1,40 +1,29 @@
-COVERAGE_PACKAGES := -p trzcina
-RUST_LOG ?= debug
+CARGO_HOME ?= $(HOME)/.cargo
+HEISENBERG_ARGUMENTS = --cargo-home "$(CARGO_HOME)" --sysroot "$(shell rustc --print sysroot)" --workspace "$(CURDIR)"
+RUST_SOURCES = $(wildcard */src/*.rs */tests/*.rs)
+WORKSPACE_MANIFESTS = Cargo.lock Cargo.toml $(wildcard */Cargo.toml)
 
-# -----------------------------------------------------------------------------
-# Real targets
-# -----------------------------------------------------------------------------
+target/lcov.info: target/llvm-cov.json
+	cargo llvm-cov report --lcov --include-build-script --output-path $@
 
-node_modules: package-lock.json
-	npm ci
-	touch node_modules
+target/llvm-cov.json: $(RUST_SOURCES) $(WORKSPACE_MANIFESTS) .config/nextest.toml rust-toolchain.toml
+	cargo llvm-cov nextest --workspace --lib --bins --tests --examples --json --include-build-script --output-path $@
 
-package-lock.json: package.json
-	npm install --package-lock-only
-
-# -----------------------------------------------------------------------------
-# Phony targets
-# -----------------------------------------------------------------------------
+target/llvm-cov/html/index.html: target/llvm-cov.json
+	cargo llvm-cov report --html --include-build-script
 
 .PHONY: clean
 clean:
-	rm -rf node_modules
 	rm -rf target
 
 .PHONY: clippy
 clippy:
-	cargo clippy --workspace --all-targets -- -D warnings
+	cargo clippy --workspace --all-targets
 
 .PHONY: coverage
-coverage: node_modules
-	cargo llvm-cov clean --workspace
-	cargo llvm-cov $(COVERAGE_PACKAGES) --no-report
-	cargo llvm-cov report --json --output-path target/llvm-cov.json
-	cargo llvm-cov report --lcov --output-path target/lcov.info
-	cargo llvm-cov report
-	npx @intentee/rust-coverage-check target/llvm-cov.json \
-		--workspace-root $(CURDIR) \
-		--gated trzcina=100
+coverage: target/lcov.info target/llvm-cov.json
+	cargo llvm-cov report --include-build-script
+	heisenberg coverage-check $(HEISENBERG_ARGUMENTS) --configuration x86_64-unknown-linux-gnu --coverage-export "$(CURDIR)/target/llvm-cov.json"
 
 .PHONY: coverage-clean
 coverage-clean:
@@ -43,16 +32,19 @@ coverage-clean:
 	rm -f target/llvm-cov.json target/lcov.info
 
 .PHONY: coverage-report
-coverage-report:
-	cargo llvm-cov $(COVERAGE_PACKAGES) --html
+coverage-report: target/llvm-cov/html/index.html
 
 .PHONY: fmt
 fmt:
 	cargo fmt --all
 
+.PHONY: heisenberg
+heisenberg:
+	heisenberg check $(HEISENBERG_ARGUMENTS) --configuration x86_64-pc-windows-msvc --configuration x86_64-unknown-linux-gnu
+
 .PHONY: rust-test
 rust-test:
-	cargo test --workspace
+	cargo nextest run --workspace
 
 .PHONY: test
 test: rust-test
