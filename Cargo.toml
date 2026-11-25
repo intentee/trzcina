@@ -1,16 +1,39 @@
 [workspace]
 resolver = "3"
-members = ["trzcina"]
+members = ["trzcina", "trzcina_ticker"]
+
+[workspace.package]
+authors = ["Intentee"]
+categories = ["asynchronous", "concurrency"]
+edition = "2024"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/intentee/trzcina"
+rust-version = "1.100.0"
+version = "0.5.0"
 
 [workspace.dependencies]
-anyhow = "1.0"
-async-trait = "0.1"
-futures-util = "0.3"
+futures-util = { version = "0.3", default-features = false }
 log = "0.4"
 thiserror = "2.0"
-tokio = { version = "1.54", features = ["full"] }
+tokio = "1.54"
 tokio-util = "0.7"
+trzcina = { version = "0.5", path = "trzcina" }
+
+[workspace.lints.rust]
+warnings = "deny"
 
 [workspace.lints.clippy]
-ignored_unit_patterns = "warn"
-must_use_candidate = "warn"
+all = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+arithmetic_side_effects = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+panic = "deny"
+panic_in_result_fn = "deny"
+string_slice = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+unwrap_used = "deny"
