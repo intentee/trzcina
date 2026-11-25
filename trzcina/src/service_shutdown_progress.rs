@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use log::error;
 use trzcina_tokio_safe_delay::timeout_within_tokio_safe_delay_cap::timeout_within_tokio_safe_delay_cap;
 
 use crate::running_service::RunningService;
@@ -14,11 +15,20 @@ pub enum ServiceShutdownProgress {
 
 impl ServiceShutdownProgress {
     pub async fn abort_within(self, abort_deadline: Duration) -> Self {
-        if let Self::StillRunning(RunningService { task, .. }) = &self {
+        if let Self::StillRunning(RunningService { name, task }) = &self {
+            error!("Service {name:?} exceeded its shutdown deadline; aborting it");
             task.abort();
         }
 
-        self.wait_within(abort_deadline, ShutdownPhase::Abort).await
+        let aborted_progress = self.wait_within(abort_deadline, ShutdownPhase::Abort).await;
+
+        if let Self::StillRunning(RunningService { name, .. }) = &aborted_progress {
+            error!(
+                "Service {name:?} ignored the abort signal for {abort_deadline:?} and is leaked beyond the manager's lifetime"
+            );
+        }
+
+        aborted_progress
     }
 
     pub async fn wait_within(self, deadline: Duration, shutdown_phase: ShutdownPhase) -> Self {
@@ -50,10 +60,5 @@ impl ServiceShutdownProgress {
             }
             Self::Stopped(outcome_with_service_name) => outcome_with_service_name,
         }
-    }
-
-    #[must_use]
-    pub const fn is_still_running(&self) -> bool {
-        matches!(self, Self::StillRunning(_))
     }
 }

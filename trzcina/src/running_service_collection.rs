@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use futures_util::future::join_all;
-use log::error;
 use log::info;
 use tokio_util::sync::CancellationToken;
 
@@ -30,15 +29,11 @@ impl RunningServiceCollection {
     ) -> ServiceShutdownOutcomeCollection {
         self.wait_for_shutdown_signal().await;
 
-        let cooperative_progress = self.stop_cooperatively(cooperative_deadline).await;
-        let final_progress = if cooperative_progress.has_still_running_services() {
-            error!("Shutdown deadline exceeded; aborting remaining services");
-            cooperative_progress.abort_within(abort_deadline).await
-        } else {
-            cooperative_progress
-        };
-
-        final_progress.into_outcome_collection()
+        self.stop_cooperatively(cooperative_deadline)
+            .await
+            .abort_within(abort_deadline)
+            .await
+            .into_outcome_collection()
     }
 
     async fn stop_cooperatively(
