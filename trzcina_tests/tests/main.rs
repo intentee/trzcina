@@ -1,7 +1,7 @@
 mod constants;
 mod dropping_running_services_aborts_them;
 mod register_bundle_appends_bundle_services_after_registered_services;
-mod register_bundle_runs_bundle_services_in_order;
+mod register_bundle_keeps_bundle_services_in_order;
 mod run_cancels_siblings_when_a_service_panics;
 mod run_cancels_siblings_when_a_service_requests_shutdown;
 mod run_elapses_shutdown_deadlines_only_up_to_tokio_safe_delay_cap;
