@@ -1,11 +1,12 @@
+use std::any::Any;
 use std::panic::resume_unwind;
 
-pub struct DropPanickingValue {
-    pub panic_message: &'static str,
+pub struct DropPanickingValue<TPanicPayload: Any + Copy + Send> {
+    pub panic_payload: TPanicPayload,
 }
 
-impl Drop for DropPanickingValue {
+impl<TPanicPayload: Any + Copy + Send> Drop for DropPanickingValue<TPanicPayload> {
     fn drop(&mut self) {
-        resume_unwind(Box::new(self.panic_message))
+        resume_unwind(Box::new(self.panic_payload))
     }
 }

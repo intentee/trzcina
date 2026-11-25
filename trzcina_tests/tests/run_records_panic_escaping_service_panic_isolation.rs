@@ -13,17 +13,26 @@ async fn records_panic_escaping_service_panic_isolation() {
 
     manager.register_service(PanickingService {
         panic_payload: Box::new(DropPanickingValue {
-            panic_message: PAYLOAD_DROP_PANIC_MESSAGE,
+            panic_payload: PAYLOAD_DROP_PANIC_MESSAGE,
         }),
+    });
+    manager.register_service(PanickingService {
+        panic_payload: Box::new(DropPanickingValue { panic_payload: () }),
     });
 
     let report = run_with_default_shutdown(manager).await;
 
     assert!(matches!(
         report.outcomes(),
-        [ServiceShutdownOutcomeWithServiceName {
-            outcome: ServiceShutdownOutcome::Panicked(panic_message),
-            ..
-        }] if panic_message == PAYLOAD_DROP_PANIC_MESSAGE
+        [
+            ServiceShutdownOutcomeWithServiceName {
+                outcome: ServiceShutdownOutcome::Panicked(panic_message),
+                ..
+            },
+            ServiceShutdownOutcomeWithServiceName {
+                outcome: ServiceShutdownOutcome::PanickedWithNonStringPayload,
+                ..
+            },
+        ] if panic_message == PAYLOAD_DROP_PANIC_MESSAGE
     ));
 }
