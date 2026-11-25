@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["trzcina", "trzcina_ticker"]
+members = ["trzcina", "trzcina_tests", "trzcina_ticker"]
 
 [workspace.package]
 authors = ["Intentee"]
@@ -13,12 +13,14 @@ rust-version = "1.100.0"
 version = "0.5.0"
 
 [workspace.dependencies]
+env_logger = { version = "0.11", default-features = false }
 futures-util = { version = "0.3", default-features = false }
 log = "0.4"
 thiserror = "2.0"
 tokio = "1.54"
 tokio-util = "0.7"
 trzcina = { version = "0.5", path = "trzcina" }
+trzcina_ticker = { path = "trzcina_ticker" }
 
 [workspace.lints.rust]
 warnings = "deny"
