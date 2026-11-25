@@ -1,6 +1,7 @@
 use std::any::type_name;
 
 use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
 use tokio_util::sync::CancellationToken;
 
 use trzcina::service::Service;
@@ -16,77 +17,85 @@ use trzcina_tests::run_with_default_shutdown::run_with_default_shutdown;
 use trzcina_tests::test_failure::TestFailure;
 use trzcina_tests::waiting_observer_service::WaitingObserverService;
 
-const PANIC_MESSAGE: &str = "deliberately panicking after a later registered service failed";
+const PANIC_MESSAGE: &str = "deliberately panicking to record its failure in registration order";
 
-struct ReleaseAwaitingPanickingService {
-    panicking_service: PanickingService,
-    release_awaiting_service: ReleaseAwaitingService,
-}
-
-impl Service for ReleaseAwaitingPanickingService {
-    type Error = TestFailure;
-
-    async fn run(
-        self: Box<Self>,
-        cancellation_token: CancellationToken,
-    ) -> Result<(), TestFailure> {
-        let Self {
-            panicking_service,
-            release_awaiting_service,
-        } = *self;
-
-        Box::new(release_awaiting_service)
-            .run(cancellation_token.clone())
-            .await?;
-
-        Box::new(panicking_service).run(cancellation_token).await
-    }
-}
-
-#[tokio::test]
-async fn records_every_service_failure_in_registration_order() {
-    assert!(install_trace_logging().is_ok());
-
+async fn failures_with_released_service_registered_before_shutdown_trigger<
+    TReleasedService,
+    TShutdownTrigger,
+>(
+    released_service: TReleasedService,
+    shutdown_trigger: TShutdownTrigger,
+) -> Result<Result<(), Vec<ServiceShutdownError>>, RecvError>
+where
+    TReleasedService: Service<Error = TestFailure>,
+    TShutdownTrigger: Service,
+{
     let (cancellation_observation_sender, cancellation_observation_receiver) =
         oneshot::channel::<()>();
     let release = CancellationToken::new();
     let mut manager = ServiceManager::default();
 
-    manager.register_service(ReleaseAwaitingPanickingService {
-        panicking_service: PanickingService {
-            panic_payload: Box::new(PANIC_MESSAGE),
+    manager.register_service(ReleaseAwaitingService {
+        cancellation_observer: WaitingObserverService {
+            observation_sender: cancellation_observation_sender.into(),
         },
-        release_awaiting_service: ReleaseAwaitingService {
-            cancellation_observer: WaitingObserverService {
-                observation_sender: cancellation_observation_sender.into(),
-            },
-            release: release.clone(),
-        },
+        release: release.clone(),
+        released_service,
     });
-    manager.register_service(ErroringService);
+    manager.register_service(shutdown_trigger);
 
-    let observed_run = ObservedRun::concurrently(run_with_default_shutdown(manager), async {
+    ObservedRun::concurrently(run_with_default_shutdown(manager), async {
         let cancellation_observation = cancellation_observation_receiver.await;
 
         release.cancel();
 
         cancellation_observation
     })
-    .await;
+    .await
+    .into_run_output()
+    .map(ServiceShutdownOutcomeCollection::into_result)
+}
+
+#[tokio::test]
+async fn records_every_service_failure_in_registration_order() {
+    assert!(install_trace_logging().is_ok());
 
     assert!(matches!(
-        observed_run
-            .into_run_output()
-            .map(ServiceShutdownOutcomeCollection::into_result),
+        failures_with_released_service_registered_before_shutdown_trigger(
+            PanickingService {
+                panic_payload: Box::new(PANIC_MESSAGE),
+            },
+            ErroringService,
+        )
+        .await,
         Ok(Err(failures)) if matches!(
             failures.as_slice(),
             [
                 ServiceShutdownError::Panicked { service_name: panicking_service_name, panic_message },
                 ServiceShutdownError::Errored { service_name: erroring_service_name, source },
-            ] if *panicking_service_name == type_name::<ReleaseAwaitingPanickingService>()
+            ] if *panicking_service_name == type_name::<ReleaseAwaitingService<PanickingService>>()
                 && panic_message == PANIC_MESSAGE
                 && *erroring_service_name == type_name::<ErroringService>()
                 && TestFailure::DeliberateServiceFailure.is_erased_as(source.as_ref())
+        )
+    ));
+    assert!(matches!(
+        failures_with_released_service_registered_before_shutdown_trigger(
+            ErroringService,
+            PanickingService {
+                panic_payload: Box::new(PANIC_MESSAGE),
+            },
+        )
+        .await,
+        Ok(Err(failures)) if matches!(
+            failures.as_slice(),
+            [
+                ServiceShutdownError::Errored { service_name: erroring_service_name, source },
+                ServiceShutdownError::Panicked { service_name: panicking_service_name, panic_message },
+            ] if *erroring_service_name == type_name::<ReleaseAwaitingService<ErroringService>>()
+                && TestFailure::DeliberateServiceFailure.is_erased_as(source.as_ref())
+                && *panicking_service_name == type_name::<PanickingService>()
+                && panic_message == PANIC_MESSAGE
         )
     ));
 }

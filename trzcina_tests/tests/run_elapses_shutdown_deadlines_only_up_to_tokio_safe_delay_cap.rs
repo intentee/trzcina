@@ -14,6 +14,7 @@ use trzcina::service_shutdown_options::ServiceShutdownOptions;
 use trzcina::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use trzcina_tests::block_on_paused_runtime::block_on_paused_runtime;
 use trzcina_tests::cancellation_ignoring_service::CancellationIgnoringService;
+use trzcina_tests::completing_service::CompletingService;
 use trzcina_tests::cooperative_shutdown::CooperativeShutdown;
 use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::release_awaiting_service::ReleaseAwaitingService;
@@ -40,6 +41,7 @@ async fn cooperative_phase_result_released_after(
             observation_sender: cancellation_observation_sender.into(),
         },
         release: release.clone(),
+        released_service: CompletingService,
     });
 
     ObservedRun::concurrently(
