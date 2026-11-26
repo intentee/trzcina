@@ -82,4 +82,9 @@ async fn returns_result_of_tick_running_at_cancellation() {
         result_of_tick_released_after_cancellation(1, TickTimeLimit::Unlimited).await,
         Err(TestFailure::DeliberateTickFailure)
     );
+    assert_eq!(
+        result_of_tick_released_after_cancellation(1, TickTimeLimit::Limited(tick_period * 2))
+            .await,
+        Err(TestFailure::DeliberateTickFailure)
+    );
 }
