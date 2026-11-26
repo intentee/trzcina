@@ -19,6 +19,7 @@ use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::release_awaiting_control::ReleaseAwaitingControl;
 use trzcina_tests::services_runtime::ServicesRuntime;
 use trzcina_tests::timed_run::TimedRun;
+use trzcina_tests::waiting_observers::WaitingObservers;
 use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
 use crate::constants::SMALLEST_DURATION_STEP;
@@ -27,9 +28,12 @@ use crate::constants::TOKIO_TIMER_GRANULARITY;
 async fn cooperative_phase_result_released_after(
     cooperative_deadline: Duration,
     released_after: Duration,
+    services_stopping_first: usize,
 ) -> Result<Result<(), Vec<ServiceShutdownError>>, RecvError> {
     let cancellation_token = CancellationToken::new();
     let mut manager = ServiceManager::default();
+    let _services_stopping_first =
+        WaitingObservers::register(&mut manager, services_stopping_first);
     let ReleaseAwaitingControl {
         cancellation_observation_receiver,
         release,
@@ -113,7 +117,16 @@ fn elapses_shutdown_deadlines_only_up_to_tokio_safe_delay_cap() {
     assert!(matches!(
         block_on_paused_runtime(cooperative_phase_result_released_after(
             deadline_beyond_cap,
-            released_after_deadline_beyond_cap
+            released_after_deadline_beyond_cap,
+            0
+        )),
+        Ok(Ok(Ok(())))
+    ));
+    assert!(matches!(
+        block_on_paused_runtime(cooperative_phase_result_released_after(
+            deadline_beyond_cap,
+            released_after_deadline_beyond_cap,
+            1
         )),
         Ok(Ok(Ok(())))
     ));
