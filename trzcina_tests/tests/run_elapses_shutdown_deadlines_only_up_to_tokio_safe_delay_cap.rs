@@ -71,6 +71,9 @@ fn abort_phase_result_released_after(
     service_manager.register_service(CancellationIgnoringService {
         held_until_abort: (),
     });
+    service_manager.register_service(CancellationIgnoringService {
+        held_until_abort: (),
+    });
 
     let cancellation_token = CancellationToken::new();
     let ServicesRuntime {
@@ -134,7 +137,10 @@ fn elapses_shutdown_deadlines_only_up_to_tokio_safe_delay_cap() {
         abort_phase_result_released_after(deadline_beyond_cap, released_after_deadline_beyond_cap),
         Ok(Ok(Err(failures))) if matches!(
             failures.as_slice(),
-            [ServiceShutdownError::AbortedByShutdownDeadline { .. }]
+            [
+                ServiceShutdownError::AbortedByShutdownDeadline { .. },
+                ServiceShutdownError::AbortedByShutdownDeadline { .. },
+            ]
         )
     ));
 }
