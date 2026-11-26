@@ -5,14 +5,12 @@ use tokio::sync::oneshot::error::RecvError;
 use trzcina::service::Service;
 use trzcina::service_manager::ServiceManager;
 use trzcina::service_shutdown_error::ServiceShutdownError;
-use trzcina::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use trzcina_tests::erroring_service::ErroringService;
 use trzcina_tests::install_trace_logging::install_trace_logging;
 use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::panicking_service::PanickingService;
 use trzcina_tests::release_awaiting_control::ReleaseAwaitingControl;
 use trzcina_tests::release_awaiting_service::ReleaseAwaitingService;
-use trzcina_tests::run_with_default_shutdown::run_with_default_shutdown;
 use trzcina_tests::test_failure::TestFailure;
 
 const PANIC_MESSAGE: &str = "deliberately panicking to record its failure in registration order";
@@ -36,16 +34,12 @@ where
 
     manager.register_service(shutdown_trigger);
 
-    ObservedRun::concurrently(run_with_default_shutdown(manager), async {
-        let cancellation_observation = cancellation_observation_receiver.await;
-
-        release.cancel();
-
-        cancellation_observation
-    })
+    ObservedRun::shutdown_result_releasing_after_observation(
+        manager,
+        cancellation_observation_receiver,
+        release,
+    )
     .await
-    .into_run_output()
-    .map(ServiceShutdownOutcomeCollection::into_result)
 }
 
 #[tokio::test]

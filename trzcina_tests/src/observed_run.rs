@@ -3,14 +3,19 @@ use std::task::Poll;
 
 use futures_util::future::Either;
 use futures_util::future::poll_fn;
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
 use tokio_util::sync::CancellationToken;
 
 use trzcina::service::Service;
 use trzcina::service_manager::ServiceManager;
+use trzcina::service_shutdown_error::ServiceShutdownError;
 use trzcina::service_shutdown_options::ServiceShutdownOptions;
 use trzcina::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use trzcina_ticker::ticker::Ticker;
 use trzcina_ticker::ticker_service::TickerService;
+
+use crate::run_with_default_shutdown::run_with_default_shutdown;
 
 pub struct ObservedRun<TRunOutput, TObservation> {
     pub observation: TObservation,
@@ -94,6 +99,28 @@ impl<TObservation> ObservedRun<ServiceShutdownOutcomeCollection, TObservation> {
             |_cancellation_token| observed,
         )
         .await
+    }
+}
+
+impl ObservedRun<ServiceShutdownOutcomeCollection, Result<(), RecvError>> {
+    /// # Errors
+    ///
+    /// Returns the `RecvError` when the observed service stopped without sending its observation.
+    pub async fn shutdown_result_releasing_after_observation(
+        service_manager: ServiceManager,
+        observation_receiver: oneshot::Receiver<()>,
+        release: CancellationToken,
+    ) -> Result<Result<(), Vec<ServiceShutdownError>>, RecvError> {
+        Self::concurrently(run_with_default_shutdown(service_manager), async move {
+            let observation = observation_receiver.await;
+
+            release.cancel();
+
+            observation
+        })
+        .await
+        .into_run_output()
+        .map(ServiceShutdownOutcomeCollection::into_result)
     }
 }
 

@@ -3,9 +3,7 @@ use tokio_util::sync::CancellationToken;
 
 use trzcina::service::Service;
 use trzcina::service_manager::ServiceManager;
-use trzcina::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use trzcina_tests::observed_run::ObservedRun;
-use trzcina_tests::run_with_default_shutdown::run_with_default_shutdown;
 use trzcina_tests::test_failure::TestFailure;
 use trzcina_tests::waiting_observer_service::WaitingObserverService;
 
@@ -40,19 +38,13 @@ async fn cancels_siblings_when_a_service_requests_shutdown() {
         observation_sender: sibling_observation_sender.into(),
     });
 
-    let observed_run = ObservedRun::concurrently(run_with_default_shutdown(manager), async {
-        let sibling_observation = sibling_observation_receiver.await;
-
-        release.cancel();
-
-        sibling_observation
-    })
-    .await;
-
     assert!(matches!(
-        observed_run
-            .into_run_output()
-            .map(ServiceShutdownOutcomeCollection::into_result),
+        ObservedRun::shutdown_result_releasing_after_observation(
+            manager,
+            sibling_observation_receiver,
+            release,
+        )
+        .await,
         Ok(Ok(()))
     ));
 }
