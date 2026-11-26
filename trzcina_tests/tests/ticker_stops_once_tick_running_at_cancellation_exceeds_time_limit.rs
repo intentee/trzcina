@@ -78,6 +78,10 @@ async fn stops_once_tick_running_at_cancellation_exceeds_time_limit() {
         elapsed: elapsed_with_later_tick_running,
         output: ticks_with_later_tick_running,
     } = record_ticks_until_later_tick_running_at_cancellation_stops(tick_time_limit).await;
+    let TimedRun {
+        elapsed: elapsed_with_later_tick_beyond_zero_limit,
+        output: ticks_with_later_tick_beyond_zero_limit,
+    } = record_ticks_until_later_tick_running_at_cancellation_stops(Duration::ZERO).await;
 
     assert_eq!(ticks_with_first_tick_running, Ok(vec![]));
     assert_eq!(elapsed_with_first_tick_running, tick_time_limit);
@@ -89,4 +93,9 @@ async fn stops_once_tick_running_at_cancellation_exceeds_time_limit() {
         elapsed_with_later_tick_running,
         tick_period + tick_time_limit
     );
+    assert_eq!(
+        ticks_with_later_tick_beyond_zero_limit,
+        Ok(vec![ExpectedTickContexts::first_immediate_tick()])
+    );
+    assert_eq!(elapsed_with_later_tick_beyond_zero_limit, tick_period);
 }
