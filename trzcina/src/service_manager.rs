@@ -44,13 +44,28 @@ impl ServiceManager {
 mod tests {
     use std::fmt;
     use std::future::ready;
+    use std::panic::AssertUnwindSafe;
+    use std::panic::catch_unwind;
 
     use futures_util::FutureExt;
+    use tokio_util::sync::CancellationToken;
 
     use crate::registered_service::RegisteredService;
+    use crate::service::Service;
     use crate::service_bundle::ServiceBundle;
 
     use super::ServiceManager;
+
+    impl Service for fmt::Error {
+        type Error = Self;
+
+        fn run(
+            self: Box<Self>,
+            _cancellation_token: CancellationToken,
+        ) -> impl Future<Output = Result<(), Self>> + Send {
+            ready(Err(*self))
+        }
+    }
 
     impl ServiceBundle for fmt::Error {
         type Error = Self;
@@ -58,6 +73,20 @@ mod tests {
         fn services(self) -> impl Future<Output = Result<Vec<RegisteredService>, Self>> + Send {
             ready(Err(self))
         }
+    }
+
+    #[test]
+    fn panics_outside_a_tokio_runtime() {
+        let mut service_manager = ServiceManager::default();
+
+        service_manager.register_service(fmt::Error);
+
+        assert!(
+            catch_unwind(AssertUnwindSafe(move || {
+                service_manager.start(CancellationToken::new())
+            }))
+            .is_err()
+        );
     }
 
     #[test]
