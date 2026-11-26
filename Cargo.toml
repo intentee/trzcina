@@ -10,7 +10,7 @@ license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/intentee/trzcina"
 rust-version = "1.100.0"
-version = "0.5.0"
+version = "0.6.0"
 
 [workspace.dependencies]
 env_logger = { version = "0.11", default-features = false }
@@ -19,9 +19,9 @@ log = "0.4"
 thiserror = "2.0"
 tokio = "1.54"
 tokio-util = "0.7"
-trzcina = { version = "0.5", path = "trzcina" }
+trzcina = { version = "0.6", path = "trzcina" }
 trzcina_ticker = { path = "trzcina_ticker" }
-trzcina_tokio_safe_delay = { version = "0.5", path = "trzcina_tokio_safe_delay" }
+trzcina_tokio_safe_delay = { version = "0.6", path = "trzcina_tokio_safe_delay" }
 
 [workspace.lints.rust]
 warnings = "deny"
