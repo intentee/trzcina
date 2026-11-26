@@ -18,6 +18,9 @@ async fn records_panic_raised_while_aborting_a_service() {
             panic_payload: ABORT_PANIC_MESSAGE,
         },
     });
+    manager.register_service(CancellationIgnoringService {
+        held_until_abort: DropPanickingValue { panic_payload: () },
+    });
 
     let observed_run = ObservedRun::shutdown_after_observation(
         manager,
@@ -28,8 +31,11 @@ async fn records_panic_raised_while_aborting_a_service() {
 
     assert!(matches!(
         observed_run.run_output.into_result().err().as_deref(),
-        Some([ServiceShutdownError::Panicked { service_name, panic_message }])
-            if *service_name == type_name::<CancellationIgnoringService<DropPanickingValue<&'static str>>>()
+        Some([
+            ServiceShutdownError::Panicked { service_name, panic_message },
+            ServiceShutdownError::PanickedWithNonStringPayload { service_name: non_string_service_name },
+        ]) if *service_name == type_name::<CancellationIgnoringService<DropPanickingValue<&'static str>>>()
                 && panic_message == ABORT_PANIC_MESSAGE
+                && *non_string_service_name == type_name::<CancellationIgnoringService<DropPanickingValue<()>>>()
     ));
 }
