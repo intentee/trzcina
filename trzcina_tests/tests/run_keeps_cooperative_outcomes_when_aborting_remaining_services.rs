@@ -1,34 +1,52 @@
 use std::any::type_name;
 
+use trzcina::service_manager::ServiceManager;
 use trzcina::service_shutdown_options::ServiceShutdownOptions;
 use trzcina::service_shutdown_outcome::ServiceShutdownOutcome;
 use trzcina::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
 use trzcina_tests::cancellation_ignoring_service::CancellationIgnoringService;
-use trzcina_tests::cooperative_shutdown::CooperativeShutdown;
-use trzcina_tests::timed_run::TimedRun;
+use trzcina_tests::observed_run::ObservedRun;
+use trzcina_tests::waiting_observers::WaitingObservers;
+
+const COOPERATIVE_SERVICES: usize = 1;
 
 #[tokio::test(start_paused = true)]
 async fn keeps_cooperative_outcomes_when_aborting_remaining_services() {
-    let CooperativeShutdown {
-        timed_shutdown: TimedRun {
-            output: shutdown_report,
-            ..
-        },
-        ..
-    } = CooperativeShutdown::measure_alongside_aborted_service(ServiceShutdownOptions::default())
-        .await;
+    let mut manager = ServiceManager::default();
+
+    manager.register_service(CancellationIgnoringService {
+        held_until_abort: (),
+    });
+
+    let _cooperative_observers = WaitingObservers::register(&mut manager, COOPERATIVE_SERVICES);
+
+    manager.register_service(CancellationIgnoringService {
+        held_until_abort: (),
+    });
+
+    let ObservedRun { run_output, .. } = ObservedRun::shutdown_after_observation(
+        manager,
+        ServiceShutdownOptions::default(),
+        async {},
+    )
+    .await;
 
     assert!(matches!(
-        shutdown_report.outcomes(),
+        run_output.outcomes(),
         [
+            ServiceShutdownOutcomeWithServiceName {
+                name: first_name,
+                outcome: ServiceShutdownOutcome::AbortedByShutdownDeadline,
+            },
             ServiceShutdownOutcomeWithServiceName {
                 outcome: ServiceShutdownOutcome::Completed,
                 ..
             },
             ServiceShutdownOutcomeWithServiceName {
-                name,
+                name: last_name,
                 outcome: ServiceShutdownOutcome::AbortedByShutdownDeadline,
             },
-        ] if *name == type_name::<CancellationIgnoringService<()>>()
+        ] if *first_name == type_name::<CancellationIgnoringService<()>>()
+            && *last_name == type_name::<CancellationIgnoringService<()>>()
     ));
 }
