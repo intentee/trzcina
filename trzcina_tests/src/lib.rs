@@ -15,6 +15,7 @@ pub mod panicking_service;
 pub mod prebuilt_services_bundle;
 pub mod record_tick_contexts;
 pub mod recording_ticker;
+pub mod release_awaiting_control;
 pub mod release_awaiting_service;
 pub mod run_with_default_shutdown;
 pub mod services_runtime;

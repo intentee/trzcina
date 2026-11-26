@@ -1,7 +1,6 @@
 use std::io;
 use std::time::Duration;
 
-use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
 use tokio::task::JoinError;
 use tokio::task::spawn_blocking;
@@ -17,10 +16,9 @@ use trzcina_tests::cancellation_ignoring_service::CancellationIgnoringService;
 use trzcina_tests::completing_service::CompletingService;
 use trzcina_tests::cooperative_shutdown::CooperativeShutdown;
 use trzcina_tests::observed_run::ObservedRun;
-use trzcina_tests::release_awaiting_service::ReleaseAwaitingService;
+use trzcina_tests::release_awaiting_control::ReleaseAwaitingControl;
 use trzcina_tests::services_runtime::ServicesRuntime;
 use trzcina_tests::timed_run::TimedRun;
-use trzcina_tests::waiting_observer_service::WaitingObserverService;
 use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
 use crate::constants::SMALLEST_DURATION_STEP;
@@ -30,19 +28,12 @@ async fn cooperative_phase_result_released_after(
     cooperative_deadline: Duration,
     released_after: Duration,
 ) -> Result<Result<(), Vec<ServiceShutdownError>>, RecvError> {
-    let (cancellation_observation_sender, cancellation_observation_receiver) =
-        oneshot::channel::<()>();
     let cancellation_token = CancellationToken::new();
-    let release = CancellationToken::new();
     let mut manager = ServiceManager::default();
-
-    manager.register_service(ReleaseAwaitingService {
-        cancellation_observer: WaitingObserverService {
-            observation_sender: cancellation_observation_sender.into(),
-        },
-        release: release.clone(),
-        released_service: CompletingService,
-    });
+    let ReleaseAwaitingControl {
+        cancellation_observation_receiver,
+        release,
+    } = ReleaseAwaitingControl::register(&mut manager, CompletingService);
 
     ObservedRun::concurrently(
         manager
