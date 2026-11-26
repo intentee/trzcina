@@ -13,6 +13,7 @@ use trzcina_tests::cancellation_ignoring_service::CancellationIgnoringService;
 use trzcina_tests::install_trace_logging::install_trace_logging;
 use trzcina_tests::observable_service::ObservableService;
 use trzcina_tests::services_runtime::ServicesRuntime;
+use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
 fn shutdown_result_after_sibling_stopped()
 -> io::Result<Result<Result<(), Vec<ServiceShutdownError>>, RecvError>> {
@@ -36,8 +37,9 @@ fn shutdown_result_after_sibling_stopped()
         .map(|shutdown_report| stop_observation.map(|()| shutdown_report.into_result()))
 }
 
-fn shutdown_result_of_abort_ignoring_service_alone()
--> io::Result<Result<(), Vec<ServiceShutdownError>>> {
+fn shutdown_result_of_abort_ignoring_service_alone(
+    shutdown_options: ServiceShutdownOptions,
+) -> io::Result<Result<(), Vec<ServiceShutdownError>>> {
     let cancellation_token = CancellationToken::new();
     let mut service_manager = ServiceManager::default();
 
@@ -51,7 +53,7 @@ fn shutdown_result_of_abort_ignoring_service_alone()
 
     services_runtime
         .shut_down_while_undriven(|running_services| {
-            running_services.run_to_completion(ServiceShutdownOptions::default())
+            running_services.run_to_completion(shutdown_options)
         })
         .map(ServiceShutdownOutcomeCollection::into_result)
 }
@@ -69,7 +71,18 @@ fn reports_leaked_beyond_shutdown_deadline_when_service_ignores_abort() {
         )
     ));
     assert!(matches!(
-        shutdown_result_of_abort_ignoring_service_alone(),
+        shutdown_result_of_abort_ignoring_service_alone(ServiceShutdownOptions::default()),
+        Ok(Err(failures)) if matches!(
+            failures.as_slice(),
+            [ServiceShutdownError::LeakedBeyondShutdownDeadline { service_name }]
+                if *service_name == type_name::<CancellationIgnoringService<()>>()
+        )
+    ));
+    assert!(matches!(
+        shutdown_result_of_abort_ignoring_service_alone(ServiceShutdownOptions {
+            abort_deadline: TOKIO_SAFE_DELAY_CAP,
+            ..ServiceShutdownOptions::default()
+        }),
         Ok(Err(failures)) if matches!(
             failures.as_slice(),
             [ServiceShutdownError::LeakedBeyondShutdownDeadline { service_name }]
