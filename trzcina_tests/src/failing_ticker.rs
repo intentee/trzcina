@@ -2,6 +2,7 @@ use std::future::ready;
 
 use tokio_util::sync::CancellationToken;
 
+use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_time_limit::TickTimeLimit;
 use trzcina_ticker::ticker::Ticker;
@@ -10,11 +11,16 @@ use crate::test_failure::TestFailure;
 
 pub struct FailingTicker {
     pub failing_tick: u64,
+    pub first_tick_timing: FirstTickTiming,
     pub tick_time_limit: TickTimeLimit,
 }
 
 impl Ticker for FailingTicker {
     type Error = TestFailure;
+
+    fn first_tick_timing(&self) -> FirstTickTiming {
+        self.first_tick_timing
+    }
 
     fn handle_tick(
         &mut self,
