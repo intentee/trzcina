@@ -12,6 +12,7 @@ use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::panicking_service::PanickingService;
 use trzcina_tests::test_failure::TestFailure;
 use trzcina_tests::thread_blocking_control::ThreadBlockingControl;
+use trzcina_tests::timed_run::TimedRun;
 
 const PANIC_MESSAGE: &str = "deliberately panicking once released in the abort phase";
 
@@ -58,12 +59,16 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
         release_sender: release_after_shutdown,
         started_receiver: leaking_started,
     } = ThreadBlockingControl::register(&mut manager, CompletingService);
-    let observed_run = ObservedRun::shutdown_after_observation(
+    let shutdown_options = ServiceShutdownOptions {
+        cooperative_deadline: Duration::ZERO,
+        ..ServiceShutdownOptions::default()
+    };
+    let TimedRun {
+        elapsed,
+        output: observed_run,
+    } = TimedRun::measure(ObservedRun::shutdown_after_observation(
         manager,
-        ServiceShutdownOptions {
-            cooperative_deadline: Duration::ZERO,
-            ..ServiceShutdownOptions::default()
-        },
+        shutdown_options.clone(),
         async {
             completing_started.await?;
             erroring_started.await?;
@@ -71,10 +76,12 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
             non_string_panicking_started.await?;
             leaking_started.await
         },
-    )
+    ))
     .await;
 
     drop(release_after_shutdown);
+
+    assert!(elapsed >= shutdown_options.abort_deadline);
 
     assert!(matches!(
         observed_run
