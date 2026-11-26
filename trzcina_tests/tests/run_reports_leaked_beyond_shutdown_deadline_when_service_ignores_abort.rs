@@ -37,15 +37,18 @@ fn shutdown_result_after_sibling_stopped()
         .map(|shutdown_report| stop_observation.map(|()| shutdown_report.into_result()))
 }
 
-fn shutdown_result_of_abort_ignoring_service_alone(
+fn shutdown_result_of_only_abort_ignoring_services(
+    abort_ignoring_services: usize,
     shutdown_options: ServiceShutdownOptions,
 ) -> io::Result<Result<(), Vec<ServiceShutdownError>>> {
     let cancellation_token = CancellationToken::new();
     let mut service_manager = ServiceManager::default();
 
-    service_manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
+    for _abort_ignoring_service in 0..abort_ignoring_services {
+        service_manager.register_service(CancellationIgnoringService {
+            held_until_abort: (),
+        });
+    }
 
     let services_runtime = ServicesRuntime::start(service_manager, cancellation_token.clone())?;
 
@@ -71,7 +74,7 @@ fn reports_leaked_beyond_shutdown_deadline_when_service_ignores_abort() {
         )
     ));
     assert!(matches!(
-        shutdown_result_of_abort_ignoring_service_alone(ServiceShutdownOptions::default()),
+        shutdown_result_of_only_abort_ignoring_services(1, ServiceShutdownOptions::default()),
         Ok(Err(failures)) if matches!(
             failures.as_slice(),
             [ServiceShutdownError::LeakedBeyondShutdownDeadline { service_name }]
@@ -79,14 +82,17 @@ fn reports_leaked_beyond_shutdown_deadline_when_service_ignores_abort() {
         )
     ));
     assert!(matches!(
-        shutdown_result_of_abort_ignoring_service_alone(ServiceShutdownOptions {
+        shutdown_result_of_only_abort_ignoring_services(2, ServiceShutdownOptions {
             abort_deadline: TOKIO_SAFE_DELAY_CAP,
             ..ServiceShutdownOptions::default()
         }),
         Ok(Err(failures)) if matches!(
             failures.as_slice(),
-            [ServiceShutdownError::LeakedBeyondShutdownDeadline { service_name }]
-                if *service_name == type_name::<CancellationIgnoringService<()>>()
+            [
+                ServiceShutdownError::LeakedBeyondShutdownDeadline { service_name: first_service_name },
+                ServiceShutdownError::LeakedBeyondShutdownDeadline { service_name: second_service_name },
+            ] if *first_service_name == type_name::<CancellationIgnoringService<()>>()
+                && *second_service_name == type_name::<CancellationIgnoringService<()>>()
         )
     ));
 }

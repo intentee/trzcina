@@ -106,6 +106,18 @@ fn elapses_shutdown_deadlines_only_up_to_tokio_safe_delay_cap() {
     let released_after_deadline_beyond_cap = TOKIO_SAFE_DELAY_CAP + TOKIO_TIMER_GRANULARITY;
 
     assert!(matches!(
+        block_on_paused_runtime(cooperative_phase_result_released_after(
+            TOKIO_SAFE_DELAY_CAP,
+            released_after_deadline_beyond_cap,
+            0
+        )),
+        Ok(Ok(Err(failures))) if matches!(
+            failures.as_slice(),
+            [ServiceShutdownError::AbortedByShutdownDeadline { .. }]
+        )
+    ));
+
+    assert!(matches!(
         block_on_paused_runtime(CooperativeShutdown::measure_alongside_aborted_service(
             ServiceShutdownOptions {
                 cooperative_deadline: TOKIO_SAFE_DELAY_CAP,
