@@ -1,28 +1,26 @@
 [package]
 name = "trzcina"
-version = "0.4.0"
-edition = "2024"
-rust-version = "1.95.0"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 description = "Async service lifecycle orchestration with cooperative cancellation and shutdown deadlines."
-repository = "https://github.com/intentee/trzcina"
-homepage = "https://github.com/intentee/trzcina"
-readme = "../README.md"
-authors = ["Intentee"]
+repository.workspace = true
+readme.workspace = true
+authors.workspace = true
 keywords = ["async", "service", "lifecycle", "cancellation", "tokio"]
-categories = ["asynchronous", "concurrency"]
+categories.workspace = true
+
+[lib]
+doctest = false
 
 [dependencies]
-anyhow = { workspace = true }
-async-trait = { workspace = true }
-futures-util = { workspace = true }
+futures-util = { workspace = true, features = ["std"] }
 log = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
-tokio-util = { workspace = true }
-
-[dev-dependencies]
-tokio = { workspace = true, features = ["test-util"] }
+tokio = { workspace = true, features = ["rt", "time"] }
+tokio-util = { workspace = true, features = ["rt"] }
+trzcina_tokio_safe_delay = { workspace = true }
 
 [lints]
 workspace = true

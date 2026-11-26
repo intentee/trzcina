@@ -1,0 +1,8 @@
+name: install cargo-nextest
+description: Install the cargo-nextest test runner.
+runs:
+  using: composite
+  steps:
+    - name: install cargo-nextest
+      shell: bash
+      run: cargo install --locked --version 0.9.152 cargo-nextest

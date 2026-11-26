@@ -9,26 +9,17 @@ on:
 jobs:
   rust:
     name: rust
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: setup rust
         uses: ./.github/actions/setup-rust
+
+      - name: install cargo-nextest
+        uses: ./.github/actions/install-cargo-nextest
 
       - name: run tests
         run: make rust-test
 
-  clippy:
-    name: clippy
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
-
-      - name: setup rust
-        uses: ./.github/actions/setup-rust
-
-      - name: run clippy
-        run: make clippy

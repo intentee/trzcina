@@ -1,7 +1,8 @@
 use crate::service_shutdown_error::ServiceShutdownError;
-use crate::service_shutdown_outcome::ServiceShutdownOutcome;
+use crate::service_shutdown_failure_source::ServiceShutdownFailureSource;
 use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
 
+/// How every service stopped, in registration order.
 #[derive(Debug)]
 pub struct ServiceShutdownOutcomeCollection {
     outcomes: Vec<ServiceShutdownOutcomeWithServiceName>,
@@ -9,28 +10,29 @@ pub struct ServiceShutdownOutcomeCollection {
 
 impl ServiceShutdownOutcomeCollection {
     #[must_use]
-    pub fn new(outcomes: Vec<ServiceShutdownOutcomeWithServiceName>) -> Self {
+    pub const fn new(outcomes: Vec<ServiceShutdownOutcomeWithServiceName>) -> Self {
         Self { outcomes }
+    }
+
+    /// # Errors
+    ///
+    /// Returns every service that did not complete, each as the error that describes how it failed.
+    pub fn into_result(self) -> Result<(), Vec<ServiceShutdownError>> {
+        let failures: Vec<ServiceShutdownError> = self
+            .outcomes
+            .into_iter()
+            .filter_map(ServiceShutdownOutcomeWithServiceName::into_failure)
+            .collect();
+
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(failures)
+        }
     }
 
     #[must_use]
     pub fn outcomes(&self) -> &[ServiceShutdownOutcomeWithServiceName] {
         &self.outcomes
-    }
-
-    pub fn into_result(self) -> Result<(), ServiceShutdownError> {
-        let failed: Vec<ServiceShutdownOutcomeWithServiceName> = self
-            .outcomes
-            .into_iter()
-            .filter(|named_outcome| {
-                !matches!(named_outcome.outcome, ServiceShutdownOutcome::Completed)
-            })
-            .collect();
-
-        if failed.is_empty() {
-            Ok(())
-        } else {
-            Err(ServiceShutdownError::new(failed))
-        }
     }
 }
