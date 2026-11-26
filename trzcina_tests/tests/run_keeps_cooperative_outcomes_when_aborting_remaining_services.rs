@@ -14,15 +14,11 @@ const COOPERATIVE_SERVICES: usize = 1;
 async fn keeps_cooperative_outcomes_when_aborting_remaining_services() {
     let mut manager = ServiceManager::default();
 
-    manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
+    CancellationIgnoringService::register(&mut manager, 1);
 
     let _cooperative_observers = WaitingObservers::register(&mut manager, COOPERATIVE_SERVICES);
 
-    manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
+    CancellationIgnoringService::register(&mut manager, 1);
 
     let ObservedRun { run_output, .. } = ObservedRun::shutdown_after_observation(
         manager,

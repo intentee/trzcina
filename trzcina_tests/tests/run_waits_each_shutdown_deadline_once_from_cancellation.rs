@@ -18,12 +18,7 @@ fn shut_down_services_ignoring_abort_on_undriven_runtime(
 ) -> io::Result<TimedRun<ServiceShutdownOutcomeCollection>> {
     let mut service_manager = ServiceManager::default();
 
-    service_manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
-    service_manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
+    CancellationIgnoringService::register(&mut service_manager, 2);
 
     let cancellation_token = CancellationToken::new();
     let services_runtime = ServicesRuntime::start(service_manager, cancellation_token.clone())?;

@@ -24,11 +24,7 @@ impl CooperativeShutdown {
         shutdown_options: ServiceShutdownOptions,
     ) -> Self {
         Self::measure_after_registering(
-            |service_manager| {
-                service_manager.register_service(CancellationIgnoringService {
-                    held_until_abort: (),
-                });
-            },
+            |service_manager| CancellationIgnoringService::register(service_manager, 1),
             shutdown_options,
         )
         .await

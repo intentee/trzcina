@@ -23,9 +23,7 @@ fn shutdown_result_after_sibling_stopped()
     service_manager.register_service(ObservableService {
         observation_sender: stop_observation_sender.into(),
     });
-    service_manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
+    CancellationIgnoringService::register(&mut service_manager, 1);
 
     let services_runtime = ServicesRuntime::start(service_manager, CancellationToken::new())?;
     let stop_observation = services_runtime.runtime.block_on(stop_observation_receiver);
@@ -44,11 +42,7 @@ fn shutdown_result_of_only_abort_ignoring_services(
     let cancellation_token = CancellationToken::new();
     let mut service_manager = ServiceManager::default();
 
-    for _abort_ignoring_service in 0..abort_ignoring_services {
-        service_manager.register_service(CancellationIgnoringService {
-            held_until_abort: (),
-        });
-    }
+    CancellationIgnoringService::register(&mut service_manager, abort_ignoring_services);
 
     let services_runtime = ServicesRuntime::start(service_manager, cancellation_token.clone())?;
 

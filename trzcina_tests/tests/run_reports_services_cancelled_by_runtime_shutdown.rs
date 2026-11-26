@@ -32,12 +32,7 @@ fn shut_down_after_services_runtime_shutdown(
 fn reports_services_cancelled_by_runtime_shutdown() {
     let mut manager = ServiceManager::default();
 
-    manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
-    manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
+    CancellationIgnoringService::register(&mut manager, 2);
 
     assert!(matches!(
         shut_down_after_services_runtime_shutdown(manager)

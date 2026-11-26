@@ -68,12 +68,7 @@ fn abort_phase_result_released_after(
 ) -> io::Result<Result<Result<(), Vec<ServiceShutdownError>>, JoinError>> {
     let mut service_manager = ServiceManager::default();
 
-    service_manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
-    service_manager.register_service(CancellationIgnoringService {
-        held_until_abort: (),
-    });
+    CancellationIgnoringService::register(&mut service_manager, 2);
 
     let cancellation_token = CancellationToken::new();
     let ServicesRuntime {
