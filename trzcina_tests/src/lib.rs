@@ -8,6 +8,7 @@ pub mod expected_tick_contexts;
 pub mod failing_ticker;
 pub mod first_tick_stalling_ticker;
 pub mod install_trace_logging;
+pub mod later_tick_awaiting_ticker;
 pub mod observable_service;
 mod observation_sender;
 pub mod observed_run;
