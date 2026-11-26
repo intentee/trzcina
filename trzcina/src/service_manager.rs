@@ -29,6 +29,11 @@ impl ServiceManager {
         self.services.push(RegisteredService::new(service));
     }
 
+    /// Spawns every registered service on the current tokio runtime.
+    ///
+    /// # Panics
+    ///
+    /// Panics when a service is registered and this is called outside a tokio runtime, as `tokio::spawn` does.
     #[must_use]
     pub fn start(self, cancellation_token: CancellationToken) -> RunningServiceCollection {
         RunningServiceCollection::start(self.services, cancellation_token)
