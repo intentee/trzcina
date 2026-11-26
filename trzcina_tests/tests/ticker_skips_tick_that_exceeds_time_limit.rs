@@ -42,7 +42,11 @@ async fn skips_tick_that_exceeds_time_limit() {
     assert!(install_trace_logging().is_ok());
 
     let tick_period = TickInterval::default().period();
-    let second_tick = ExpectedTickContexts { tick_period }.second_immediate_tick();
+    let expected_tick_contexts = ExpectedTickContexts { tick_period };
+    let second_tick = expected_tick_contexts.second_immediate_tick();
+    let ticks_after_skipped_delayed_first_tick = expected_tick_contexts
+        .second_delayed_tick()
+        .map(|second_delayed_tick| vec![second_delayed_tick]);
     let tick_time_limit = tick_period * 2;
     let TimedRun {
         elapsed: elapsed_with_time_limit,
@@ -62,13 +66,25 @@ async fn skips_tick_that_exceeds_time_limit() {
         TOKIO_SAFE_DELAY_CAP,
     )
     .await;
-
     let TimedRun {
         elapsed: elapsed_with_delayed_first_tick,
         output: ticks_with_delayed_first_tick,
     } = record_ticks_after_first_tick_stalls_beyond(
         FirstTickTiming::AfterInterval,
         tick_time_limit,
+    )
+    .await;
+    let TimedRun {
+        elapsed: elapsed_with_delayed_first_tick_and_zero_time_limit,
+        output: ticks_with_delayed_first_tick_and_zero_time_limit,
+    } = record_ticks_after_first_tick_stalls_beyond(FirstTickTiming::AfterInterval, Duration::ZERO)
+        .await;
+    let TimedRun {
+        elapsed: elapsed_with_delayed_first_tick_and_time_limit_at_cap,
+        output: ticks_with_delayed_first_tick_and_time_limit_at_cap,
+    } = record_ticks_after_first_tick_stalls_beyond(
+        FirstTickTiming::AfterInterval,
+        TOKIO_SAFE_DELAY_CAP,
     )
     .await;
 
@@ -80,12 +96,26 @@ async fn skips_tick_that_exceeds_time_limit() {
     assert_eq!(elapsed_with_time_limit_at_cap, TOKIO_SAFE_DELAY_CAP);
     assert_eq!(
         ticks_with_delayed_first_tick,
-        ExpectedTickContexts { tick_period }
-            .second_delayed_tick()
-            .map(|second_delayed_tick| vec![second_delayed_tick])
+        ticks_after_skipped_delayed_first_tick
     );
     assert_eq!(
         elapsed_with_delayed_first_tick,
         tick_period + tick_time_limit
+    );
+    assert_eq!(
+        ticks_with_delayed_first_tick_and_zero_time_limit,
+        ticks_after_skipped_delayed_first_tick
+    );
+    assert_eq!(
+        elapsed_with_delayed_first_tick_and_zero_time_limit,
+        tick_period * 2
+    );
+    assert_eq!(
+        ticks_with_delayed_first_tick_and_time_limit_at_cap,
+        ticks_after_skipped_delayed_first_tick
+    );
+    assert_eq!(
+        elapsed_with_delayed_first_tick_and_time_limit_at_cap,
+        tick_period + TOKIO_SAFE_DELAY_CAP
     );
 }

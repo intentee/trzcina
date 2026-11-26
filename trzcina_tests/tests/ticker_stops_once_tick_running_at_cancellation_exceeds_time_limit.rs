@@ -14,10 +14,12 @@ use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::tick_time_limit::TickTimeLimit;
+use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
 const TICKS_BEFORE_CANCELLATION: usize = 0;
 
 async fn record_ticks_until_first_tick_running_at_cancellation_stops(
+    first_tick_timing: FirstTickTiming,
     tick_time_limit: Duration,
 ) -> TimedRun<Result<Vec<TickContext>, TestFailure>> {
     let first_tick_began = CancellationToken::new();
@@ -26,7 +28,7 @@ async fn record_ticks_until_first_tick_running_at_cancellation_stops(
         |tick_recorder| FirstTickStallingTicker {
             first_tick_began: first_tick_began.clone(),
             first_tick_release: CancellationToken::new(),
-            first_tick_timing: FirstTickTiming::Immediate,
+            first_tick_timing,
             missed_tick_behavior: MissedTickBehavior::Delay,
             tick_recorder,
             tick_time_limit: TickTimeLimit::Limited(tick_time_limit),
@@ -73,7 +75,19 @@ async fn stops_once_tick_running_at_cancellation_exceeds_time_limit() {
     let TimedRun {
         elapsed: elapsed_with_first_tick_running,
         output: ticks_with_first_tick_running,
-    } = record_ticks_until_first_tick_running_at_cancellation_stops(tick_time_limit).await;
+    } = record_ticks_until_first_tick_running_at_cancellation_stops(
+        FirstTickTiming::Immediate,
+        tick_time_limit,
+    )
+    .await;
+    let TimedRun {
+        elapsed: elapsed_with_delayed_first_tick_running,
+        output: ticks_with_delayed_first_tick_running,
+    } = record_ticks_until_first_tick_running_at_cancellation_stops(
+        FirstTickTiming::AfterInterval,
+        tick_time_limit,
+    )
+    .await;
     let TimedRun {
         elapsed: elapsed_with_later_tick_running,
         output: ticks_with_later_tick_running,
@@ -82,9 +96,18 @@ async fn stops_once_tick_running_at_cancellation_exceeds_time_limit() {
         elapsed: elapsed_with_later_tick_beyond_zero_limit,
         output: ticks_with_later_tick_beyond_zero_limit,
     } = record_ticks_until_later_tick_running_at_cancellation_stops(Duration::ZERO).await;
+    let TimedRun {
+        elapsed: elapsed_with_later_tick_at_cap_limit,
+        output: ticks_with_later_tick_at_cap_limit,
+    } = record_ticks_until_later_tick_running_at_cancellation_stops(TOKIO_SAFE_DELAY_CAP).await;
 
     assert_eq!(ticks_with_first_tick_running, Ok(vec![]));
     assert_eq!(elapsed_with_first_tick_running, tick_time_limit);
+    assert_eq!(ticks_with_delayed_first_tick_running, Ok(vec![]));
+    assert_eq!(
+        elapsed_with_delayed_first_tick_running,
+        tick_period + tick_time_limit
+    );
     assert_eq!(
         ticks_with_later_tick_running,
         Ok(vec![ExpectedTickContexts::first_immediate_tick()])
@@ -98,4 +121,12 @@ async fn stops_once_tick_running_at_cancellation_exceeds_time_limit() {
         Ok(vec![ExpectedTickContexts::first_immediate_tick()])
     );
     assert_eq!(elapsed_with_later_tick_beyond_zero_limit, tick_period);
+    assert_eq!(
+        ticks_with_later_tick_at_cap_limit,
+        Ok(vec![ExpectedTickContexts::first_immediate_tick()])
+    );
+    assert_eq!(
+        elapsed_with_later_tick_at_cap_limit,
+        tick_period + TOKIO_SAFE_DELAY_CAP
+    );
 }

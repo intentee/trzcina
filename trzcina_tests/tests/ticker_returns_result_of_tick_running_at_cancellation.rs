@@ -3,12 +3,14 @@ use tokio_util::sync::CancellationToken;
 
 use trzcina_tests::observed_run::ObservedRun;
 use trzcina_tests::test_failure::TestFailure;
+use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::tick_time_limit::TickTimeLimit;
 use trzcina_ticker::ticker::Ticker;
 
 async fn result_of_tick_released_after_cancellation(
+    first_tick_timing: FirstTickTiming,
     failing_tick: u64,
     tick_time_limit: TickTimeLimit,
 ) -> Result<(), TestFailure> {
@@ -17,6 +19,7 @@ async fn result_of_tick_released_after_cancellation(
     let ObservedRun { run_output, .. } = ObservedRun::tick_until_observation(
         ReleaseAwaitingFailingTicker {
             failing_tick,
+            first_tick_timing,
             failing_tick_began: failing_tick_began.clone(),
             release: release.clone(),
             tick_time_limit,
@@ -35,6 +38,7 @@ async fn result_of_tick_released_after_cancellation(
 
 struct ReleaseAwaitingFailingTicker {
     failing_tick: u64,
+    first_tick_timing: FirstTickTiming,
     failing_tick_began: CancellationToken,
     release: CancellationToken,
     tick_time_limit: TickTimeLimit,
@@ -42,6 +46,10 @@ struct ReleaseAwaitingFailingTicker {
 
 impl Ticker for ReleaseAwaitingFailingTicker {
     type Error = TestFailure;
+
+    fn first_tick_timing(&self) -> FirstTickTiming {
+        self.first_tick_timing
+    }
 
     async fn handle_tick(
         &mut self,
@@ -70,21 +78,48 @@ async fn returns_result_of_tick_running_at_cancellation() {
     let tick_period = TickInterval::default().period();
 
     assert_eq!(
-        result_of_tick_released_after_cancellation(0, TickTimeLimit::Unlimited).await,
+        result_of_tick_released_after_cancellation(
+            FirstTickTiming::Immediate,
+            0,
+            TickTimeLimit::Unlimited
+        )
+        .await,
         Err(TestFailure::DeliberateTickFailure)
     );
     assert_eq!(
-        result_of_tick_released_after_cancellation(0, TickTimeLimit::Limited(tick_period * 2))
-            .await,
+        result_of_tick_released_after_cancellation(
+            FirstTickTiming::AfterInterval,
+            0,
+            TickTimeLimit::Unlimited
+        )
+        .await,
         Err(TestFailure::DeliberateTickFailure)
     );
     assert_eq!(
-        result_of_tick_released_after_cancellation(1, TickTimeLimit::Unlimited).await,
+        result_of_tick_released_after_cancellation(
+            FirstTickTiming::Immediate,
+            0,
+            TickTimeLimit::Limited(tick_period * 2)
+        )
+        .await,
         Err(TestFailure::DeliberateTickFailure)
     );
     assert_eq!(
-        result_of_tick_released_after_cancellation(1, TickTimeLimit::Limited(tick_period * 2))
-            .await,
+        result_of_tick_released_after_cancellation(
+            FirstTickTiming::Immediate,
+            1,
+            TickTimeLimit::Unlimited
+        )
+        .await,
+        Err(TestFailure::DeliberateTickFailure)
+    );
+    assert_eq!(
+        result_of_tick_released_after_cancellation(
+            FirstTickTiming::Immediate,
+            1,
+            TickTimeLimit::Limited(tick_period * 2)
+        )
+        .await,
         Err(TestFailure::DeliberateTickFailure)
     );
 }
