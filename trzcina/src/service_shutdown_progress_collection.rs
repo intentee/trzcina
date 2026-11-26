@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use futures_util::future::join_all;
 
-use crate::assemblable_service_shutdown_outcome_collection::AssemblableServiceShutdownOutcomeCollection;
 use crate::service_shutdown_outcome_collection::ServiceShutdownOutcomeCollection;
 use crate::service_shutdown_progress::ServiceShutdownProgress;
 
@@ -29,7 +28,7 @@ impl ServiceShutdownProgressCollection {
 
     #[must_use]
     pub fn into_outcome_collection(self) -> ServiceShutdownOutcomeCollection {
-        ServiceShutdownOutcomeCollection::assemble(
+        ServiceShutdownOutcomeCollection::new(
             self.service_progress
                 .into_iter()
                 .map(ServiceShutdownProgress::into_outcome_with_service_name)

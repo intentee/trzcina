@@ -1,4 +1,3 @@
-use crate::assemblable_service_shutdown_outcome_collection::AssemblableServiceShutdownOutcomeCollection;
 use crate::service_shutdown_error::ServiceShutdownError;
 use crate::service_shutdown_failure_source::ServiceShutdownFailureSource;
 use crate::service_shutdown_outcome_with_service_name::ServiceShutdownOutcomeWithServiceName;
@@ -10,6 +9,11 @@ pub struct ServiceShutdownOutcomeCollection {
 }
 
 impl ServiceShutdownOutcomeCollection {
+    #[must_use]
+    pub const fn new(outcomes: Vec<ServiceShutdownOutcomeWithServiceName>) -> Self {
+        Self { outcomes }
+    }
+
     /// # Errors
     ///
     /// Returns every service that did not complete, each as the error that describes how it failed.
@@ -30,11 +34,5 @@ impl ServiceShutdownOutcomeCollection {
     #[must_use]
     pub fn outcomes(&self) -> &[ServiceShutdownOutcomeWithServiceName] {
         &self.outcomes
-    }
-}
-
-impl AssemblableServiceShutdownOutcomeCollection for ServiceShutdownOutcomeCollection {
-    fn assemble(outcomes: Vec<ServiceShutdownOutcomeWithServiceName>) -> Self {
-        Self { outcomes }
     }
 }
