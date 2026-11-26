@@ -1,3 +1,4 @@
+mod assemblable_service_shutdown_outcome_collection;
 mod panic_payload;
 pub mod registered_service;
 mod runnable_service;
