@@ -14,17 +14,19 @@ use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_interval::TickInterval;
 use trzcina_ticker::tick_time_limit::TickTimeLimit;
+use trzcina_tokio_safe_delay::constants::TOKIO_SAFE_DELAY_CAP;
 
 const OBSERVED_TICKS: usize = 1;
 
 async fn record_ticks_after_first_tick_stalls_beyond(
+    first_tick_timing: FirstTickTiming,
     tick_time_limit: Duration,
 ) -> TimedRun<Result<Vec<TickContext>, TestFailure>> {
     TimedRun::measure(record_tick_contexts(
         |tick_recorder| FirstTickStallingTicker {
             first_tick_began: CancellationToken::new(),
             first_tick_release: CancellationToken::new(),
-            first_tick_timing: FirstTickTiming::Immediate,
+            first_tick_timing,
             missed_tick_behavior: MissedTickBehavior::Delay,
             tick_recorder,
             tick_time_limit: TickTimeLimit::Limited(tick_time_limit),
@@ -45,14 +47,45 @@ async fn skips_tick_that_exceeds_time_limit() {
     let TimedRun {
         elapsed: elapsed_with_time_limit,
         output: ticks_with_time_limit,
-    } = record_ticks_after_first_tick_stalls_beyond(tick_time_limit).await;
+    } = record_ticks_after_first_tick_stalls_beyond(FirstTickTiming::Immediate, tick_time_limit)
+        .await;
     let TimedRun {
         elapsed: elapsed_with_zero_time_limit,
         output: ticks_with_zero_time_limit,
-    } = record_ticks_after_first_tick_stalls_beyond(Duration::ZERO).await;
+    } = record_ticks_after_first_tick_stalls_beyond(FirstTickTiming::Immediate, Duration::ZERO)
+        .await;
+    let TimedRun {
+        elapsed: elapsed_with_time_limit_at_cap,
+        output: ticks_with_time_limit_at_cap,
+    } = record_ticks_after_first_tick_stalls_beyond(
+        FirstTickTiming::Immediate,
+        TOKIO_SAFE_DELAY_CAP,
+    )
+    .await;
+
+    let TimedRun {
+        elapsed: elapsed_with_delayed_first_tick,
+        output: ticks_with_delayed_first_tick,
+    } = record_ticks_after_first_tick_stalls_beyond(
+        FirstTickTiming::AfterInterval,
+        tick_time_limit,
+    )
+    .await;
 
     assert_eq!(ticks_with_time_limit, Ok(vec![second_tick]));
     assert_eq!(elapsed_with_time_limit, tick_time_limit);
     assert_eq!(ticks_with_zero_time_limit, Ok(vec![second_tick]));
     assert_eq!(elapsed_with_zero_time_limit, tick_period);
+    assert_eq!(ticks_with_time_limit_at_cap, Ok(vec![second_tick]));
+    assert_eq!(elapsed_with_time_limit_at_cap, TOKIO_SAFE_DELAY_CAP);
+    assert_eq!(
+        ticks_with_delayed_first_tick,
+        ExpectedTickContexts { tick_period }
+            .second_delayed_tick()
+            .map(|second_delayed_tick| vec![second_delayed_tick])
+    );
+    assert_eq!(
+        elapsed_with_delayed_first_tick,
+        tick_period + tick_time_limit
+    );
 }
