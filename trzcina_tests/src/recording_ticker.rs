@@ -5,6 +5,7 @@ use tokio_util::sync::CancellationToken;
 use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_interval::TickInterval;
+use trzcina_ticker::tick_time_limit::TickTimeLimit;
 use trzcina_ticker::ticker::Ticker;
 
 use crate::record_tick_contexts::record_tick_contexts;
@@ -15,6 +16,7 @@ pub struct RecordingTicker {
     first_tick_timing: FirstTickTiming,
     tick_interval: TickInterval,
     tick_recorder: TickRecorder,
+    tick_time_limit: TickTimeLimit,
 }
 
 impl RecordingTicker {
@@ -24,6 +26,7 @@ impl RecordingTicker {
     pub async fn record<TBeforeReceiving, TBeforeReceivingStep>(
         first_tick_timing: FirstTickTiming,
         tick_interval: TickInterval,
+        tick_time_limit: TickTimeLimit,
         before_receiving: TBeforeReceiving,
         ticks_before_cancellation: usize,
     ) -> Result<Vec<TickContext>, TestFailure>
@@ -36,6 +39,7 @@ impl RecordingTicker {
                 first_tick_timing,
                 tick_interval,
                 tick_recorder,
+                tick_time_limit,
             },
             before_receiving,
             ticks_before_cancellation,
@@ -61,5 +65,9 @@ impl Ticker for RecordingTicker {
 
     fn tick_interval(&self) -> TickInterval {
         self.tick_interval
+    }
+
+    fn tick_time_limit(&self) -> TickTimeLimit {
+        self.tick_time_limit
     }
 }

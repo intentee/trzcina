@@ -6,6 +6,7 @@ use trzcina_tests::test_failure::TestFailure;
 use trzcina_ticker::first_tick_timing::FirstTickTiming;
 use trzcina_ticker::tick_context::TickContext;
 use trzcina_ticker::tick_interval::TickInterval;
+use trzcina_ticker::tick_time_limit::TickTimeLimit;
 
 async fn record_first_tick(
     first_tick_timing: FirstTickTiming,
@@ -13,6 +14,7 @@ async fn record_first_tick(
     RecordingTicker::record(
         first_tick_timing,
         TickInterval::default(),
+        TickTimeLimit::Unlimited,
         |_cancellation_token| ready(()),
         1,
     )
