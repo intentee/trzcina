@@ -35,9 +35,23 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
             panic_payload: Box::new(PANIC_MESSAGE),
         },
     );
+    let ThreadBlockingControl {
+        release_sender: non_string_panicking_release,
+        started_receiver: non_string_panicking_started,
+    } = ThreadBlockingControl::register(
+        &mut manager,
+        PanickingService {
+            panic_payload: Box::new(()),
+        },
+    );
 
     manager.register_service(CancellationIgnoringService {
-        held_until_abort: vec![completing_release, erroring_release, panicking_release],
+        held_until_abort: vec![
+            completing_release,
+            erroring_release,
+            panicking_release,
+            non_string_panicking_release,
+        ],
     });
 
     let ThreadBlockingControl {
@@ -54,6 +68,7 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
             completing_started.await?;
             erroring_started.await?;
             panicking_started.await?;
+            non_string_panicking_started.await?;
             leaking_started.await
         },
     )
@@ -77,6 +92,10 @@ async fn keeps_outcome_of_each_service_in_abort_phase() {
             },
             ServiceShutdownOutcomeWithServiceName {
                 outcome: ServiceShutdownOutcome::Panicked(panic_message),
+                ..
+            },
+            ServiceShutdownOutcomeWithServiceName {
+                outcome: ServiceShutdownOutcome::PanickedWithNonStringPayload,
                 ..
             },
             ServiceShutdownOutcomeWithServiceName {
