@@ -27,6 +27,7 @@ async fn record_ticks_after_first_tick_stalls(
     first_tick_timing: FirstTickTiming,
     missed_tick_behavior: MissedTickBehavior,
     first_tick_stall: Duration,
+    tick_time_limit: TickTimeLimit,
 ) -> Result<Vec<TickContext>, TestFailure> {
     let first_tick_began = CancellationToken::new();
     let first_tick_release = CancellationToken::new();
@@ -38,7 +39,7 @@ async fn record_ticks_after_first_tick_stalls(
             first_tick_timing,
             missed_tick_behavior,
             tick_recorder,
-            tick_time_limit: TickTimeLimit::Unlimited,
+            tick_time_limit,
         },
         |_cancellation_token| async {
             first_tick_began.cancelled().await;
@@ -56,90 +57,101 @@ async fn applies_configured_missed_tick_behavior() {
     let first_tick_stall = tick_period * 5 / 2;
     let expected_tick_contexts = ExpectedTickContexts { tick_period };
 
-    assert_eq!(
-        record_ticks_after_first_tick_stalls(
-            FirstTickTiming::Immediate,
-            MissedTickBehavior::Skip,
-            first_tick_stall,
-        )
-        .await,
-        Ok(vec![
-            ExpectedTickContexts::first_immediate_tick(),
-            expected_tick_contexts.second_immediate_tick(),
-            third_tick(tick_period * 3, tick_period * 2),
-        ])
-    );
-    assert_eq!(
-        record_ticks_after_first_tick_stalls(
-            FirstTickTiming::Immediate,
-            MissedTickBehavior::Delay,
-            first_tick_stall,
-        )
-        .await,
-        Ok(vec![
-            ExpectedTickContexts::first_immediate_tick(),
-            expected_tick_contexts.second_immediate_tick(),
-            third_tick(tick_period * 7 / 2, tick_period * 5 / 2),
-        ])
-    );
-    assert_eq!(
-        record_ticks_after_first_tick_stalls(
-            FirstTickTiming::AfterInterval,
-            MissedTickBehavior::Skip,
-            first_tick_stall,
-        )
-        .await,
-        expected_tick_contexts
-            .second_delayed_tick()
-            .map(|second_delayed_tick| vec![
-                expected_tick_contexts.first_delayed_tick(),
-                second_delayed_tick,
-                third_tick(tick_period * 4, tick_period * 2),
-            ])
-    );
-    assert_eq!(
-        record_ticks_after_first_tick_stalls(
-            FirstTickTiming::AfterInterval,
-            MissedTickBehavior::Delay,
-            first_tick_stall,
-        )
-        .await,
-        expected_tick_contexts
-            .second_delayed_tick()
-            .map(|second_delayed_tick| vec![
-                expected_tick_contexts.first_delayed_tick(),
-                second_delayed_tick,
-                third_tick(tick_period * 9 / 2, tick_period * 5 / 2),
-            ])
-    );
-    assert_eq!(
-        record_ticks_after_first_tick_stalls(
-            FirstTickTiming::Immediate,
-            MissedTickBehavior::Burst,
-            first_tick_stall,
-        )
-        .await,
-        expected_tick_contexts
-            .third_immediate_tick()
-            .map(|third_immediate_tick| vec![
+    for tick_time_limit in [
+        TickTimeLimit::Unlimited,
+        TickTimeLimit::Limited(tick_period * 3),
+    ] {
+        assert_eq!(
+            record_ticks_after_first_tick_stalls(
+                FirstTickTiming::Immediate,
+                MissedTickBehavior::Skip,
+                first_tick_stall,
+                tick_time_limit,
+            )
+            .await,
+            Ok(vec![
                 ExpectedTickContexts::first_immediate_tick(),
                 expected_tick_contexts.second_immediate_tick(),
-                third_immediate_tick,
+                third_tick(tick_period * 3, tick_period * 2),
             ])
-    );
-    assert_eq!(
-        record_ticks_after_first_tick_stalls(
-            FirstTickTiming::AfterInterval,
-            MissedTickBehavior::Burst,
-            first_tick_stall,
-        )
-        .await,
-        expected_tick_contexts
-            .second_delayed_tick()
-            .map(|second_delayed_tick| vec![
-                expected_tick_contexts.first_delayed_tick(),
-                second_delayed_tick,
-                third_tick(tick_period * 3, tick_period),
+        );
+        assert_eq!(
+            record_ticks_after_first_tick_stalls(
+                FirstTickTiming::Immediate,
+                MissedTickBehavior::Delay,
+                first_tick_stall,
+                tick_time_limit,
+            )
+            .await,
+            Ok(vec![
+                ExpectedTickContexts::first_immediate_tick(),
+                expected_tick_contexts.second_immediate_tick(),
+                third_tick(tick_period * 7 / 2, tick_period * 5 / 2),
             ])
-    );
+        );
+        assert_eq!(
+            record_ticks_after_first_tick_stalls(
+                FirstTickTiming::AfterInterval,
+                MissedTickBehavior::Skip,
+                first_tick_stall,
+                tick_time_limit,
+            )
+            .await,
+            expected_tick_contexts
+                .second_delayed_tick()
+                .map(|second_delayed_tick| vec![
+                    expected_tick_contexts.first_delayed_tick(),
+                    second_delayed_tick,
+                    third_tick(tick_period * 4, tick_period * 2),
+                ])
+        );
+        assert_eq!(
+            record_ticks_after_first_tick_stalls(
+                FirstTickTiming::AfterInterval,
+                MissedTickBehavior::Delay,
+                first_tick_stall,
+                tick_time_limit,
+            )
+            .await,
+            expected_tick_contexts
+                .second_delayed_tick()
+                .map(|second_delayed_tick| vec![
+                    expected_tick_contexts.first_delayed_tick(),
+                    second_delayed_tick,
+                    third_tick(tick_period * 9 / 2, tick_period * 5 / 2),
+                ])
+        );
+        assert_eq!(
+            record_ticks_after_first_tick_stalls(
+                FirstTickTiming::Immediate,
+                MissedTickBehavior::Burst,
+                first_tick_stall,
+                tick_time_limit,
+            )
+            .await,
+            expected_tick_contexts
+                .third_immediate_tick()
+                .map(|third_immediate_tick| vec![
+                    ExpectedTickContexts::first_immediate_tick(),
+                    expected_tick_contexts.second_immediate_tick(),
+                    third_immediate_tick,
+                ])
+        );
+        assert_eq!(
+            record_ticks_after_first_tick_stalls(
+                FirstTickTiming::AfterInterval,
+                MissedTickBehavior::Burst,
+                first_tick_stall,
+                tick_time_limit,
+            )
+            .await,
+            expected_tick_contexts
+                .second_delayed_tick()
+                .map(|second_delayed_tick| vec![
+                    expected_tick_contexts.first_delayed_tick(),
+                    second_delayed_tick,
+                    third_tick(tick_period * 3, tick_period),
+                ])
+        );
+    }
 }
